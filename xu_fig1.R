@@ -46,28 +46,28 @@ sgd <- function(data, method, averaged=F, ls=F, lr, ...) {
   #   p x (n+1) matrix where the jth column is the jth theta update
 
   # check.data(data)
-  n = nrow(data$X)
-  p = ncol(data$X)
+  n <- nrow(data$X)
+  p <- ncol(data$X)
   # matrix of estimates of SGD (p x iters)
-  theta.sgd = matrix(0, nrow=p, ncol=n+1)
+  theta.sgd <- matrix(0, nrow=p, ncol=n+1)
   if (ls == TRUE) y <- matrix(0, nrow=p, ncol=n+1)
 
   for(i in 1:n) {
-    xi = data$X[i, ]
-    theta.old = theta.sgd[, i]
+    xi <- data$X[i, ]
+    theta.old <- theta.sgd[, i]
 
     # Compute learning rate.
-    ai = lr(i, ...)
+    ai <- lr(i, ...)
 
     # Update.
     if (ls == TRUE) y[, i+1] <- data$A %*% (xi - theta.old)
     if (method == "explicit") {
-      theta.new = theta.old + (ai/2) * data$A %*% (xi - theta.old)
+      theta.new <- theta.old + (ai/2) * data$A %*% (xi - theta.old)
     } else if (method == "implicit") {
-      theta.new = solve(diag(p) + (ai/2)*data$A) %*% (theta.old + (ai/2)*data$A%*%xi)
+      theta.new <- solve(diag(p) + (ai/2)*data$A) %*% (theta.old + (ai/2)*data$A%*%xi)
     }
 
-    theta.sgd[, i+1] = theta.new
+    theta.sgd[, i+1] <- theta.new
   }
   if (averaged == TRUE) {
     theta.sgd <- t(apply(theta.sgd, 1, function(x) {
@@ -125,8 +125,8 @@ batch <- function(data) {
 
 # Sample data.
 set.seed(42)
-A = generate.A(p=100)
-d = sample.data(dim.n=1e5, A)
+A <- generate.A(p=100)
+d <- sample.data(dim.n=1e5, A)
 
 # Construct functions for learning rate.
 lr.explicit <- function(n) {
@@ -149,18 +149,10 @@ if (job.id == 1) {
 } else if (job.id == 2) {
   theta <- sgd(d, method="explicit", averaged=T, lr=lr.avg)[, subset.idx]
 } else if (job.id == 3) {
-  theta <- sgd(d, method="explicit", ls=T, lr=lr.avg)[, subset.idx]
-} else if (job.id == 4) {
-  theta <- sgd(d, method="explicit", averaged=T, ls=T, lr=lr.avg)[, subset.idx]
-} else if (job.id == 5) {
   theta <- sgd(d, method="implicit", lr=lr.implicit)[, subset.idx]
-} else if (job.id == 6) {
+} else if (job.id == 4) {
   theta <- sgd(d, method="implicit", averaged=T, lr=lr.implicit)[, subset.idx]
-} else if (job.id == 7) {
-  theta <- sgd(d, method="implicit", ls=T, lr=lr.implicit)[, subset.idx]
-} else if (job.id == 8) {
-  theta <- sgd(d, method="implicit", averaged=T, ls=T, lr=lr.implicit)[, subset.idx]
-} else if (job.id == 9) {
+} else if (job.id == 5) {
   theta <- batch(d)[, subset.idx]
 }
 
