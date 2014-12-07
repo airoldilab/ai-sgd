@@ -47,8 +47,7 @@ sample.data <- function(dim.n, A, theta=matrix(1, ncol=1, nrow=nrow(A)),
 }
 
 check.data <- function(data) {
-  # Do this to check the data object.
-  #
+  # Do a pretty print of the object generated from sample.data.
   nx <- nrow(data$X)
   ny <- length(data$Y)
   p <- ncol(data$X)
@@ -59,7 +58,6 @@ check.data <- function(data) {
   print(var(data$Y))
   print(1 + sum(cov(data$X)))
 }
-
 
 plot.risk <- function(data, est) {
   # Plot estimated biases of the optimization routines performed.
@@ -109,5 +107,4 @@ plot.risk <- function(data, est) {
       ylab("Excess risk") +
       ggtitle("Excess risk over training size")
   )
-
 }

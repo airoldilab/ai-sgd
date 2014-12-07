@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 # Replicate the experiment set in Xu, section 6.1, and compare other methods.
+#
+# @pre "xu_section6_1.slurm" was run successfully
 
 library(dplyr)
 library(ggplot2)
@@ -7,7 +9,7 @@ library(ggplot2)
 list.bias <- list()
 # We stored only a subset of them.
 subset.idx <- c(seq(100, 900, by=100), seq(1000, 1e5, by=1000))
-for (i in 1:9) {
+for (i in 1:4) {
   # Load all data to plot.
   load(sprintf("out/xu_section6_1_%i.RData", i))
 

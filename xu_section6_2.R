@@ -66,9 +66,9 @@ lr.implicit <- function(n, alpha) {
 
 # Optimize!
 theta <- list()
-theta$explicit <- sgd(d, method="explicit", lr=lr.explicit, alpha=100)
-theta$averaged <- sgd(d, method="averaged", lr=lr.explicit, alpha=100)
-theta$implicit <- sgd(d, method="implicit", lr=lr.implicit, alpha=100)
+theta$sgd <- sgd(d, method="explicit", lr=lr.explicit, alpha=100)
+theta$asgd <- sgd(d, method="explicit", averaged=T, lr=lr.explicit, alpha=100)
+theta$isgd <- sgd(d, method="implicit", lr=lr.implicit, alpha=100)
 theta$batch <- batch(d, sequence=round(seq(1e2+1, 1e5, length.out=100)))
 
 # Reproduce the plot in Xu Section 6.2 and export it.
