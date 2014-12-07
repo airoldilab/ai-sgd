@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Replicate Figure 1 of Xu.
+# Replicate the experiment set in Xu, section 6.1, and compare other methods.
 
 library(dplyr)
 library(ggplot2)
@@ -9,7 +9,7 @@ list.bias <- list()
 subset.idx <- c(seq(100, 900, by=100), seq(1000, 1e5, by=1000))
 for (i in 1:9) {
   # Load all data to plot.
-  load(sprintf("out/xu_fig1_%i.RData", i))
+  load(sprintf("out/xu_section6_1_%i.RData", i))
 
   # Get method.
   if (i == 1) {
@@ -23,7 +23,7 @@ for (i in 1:9) {
   }
 
   # Save data frame of (t, estimated bias, method) triplets>
-  list.bias[[i]] = data.frame(
+  list.bias[[i]] <- data.frame(
     t=subset.idx,
     est.bias=apply(theta, 2, function(colum) {
       t(colum) %*% d$A %*% colum
@@ -44,4 +44,4 @@ dat %>%
     xlab("Training size t") +
     ylab("Excess risk") +
     ggtitle("Excess risk over training size")
-ggsave("img/xu_fig1.png")
+ggsave("img/xu_section6_1.png")

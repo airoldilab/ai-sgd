@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Replicate Figure 1 of Xu.
+# Replicate the experiment set in Xu, section 6.1, and compare other methods.
 #
 # @pre "out/" directory exists
 # @pre "img/" directory exists
@@ -10,8 +10,8 @@ library(mvtnorm)
 source("functions.R")
 
 sgd <- function(data, method, averaged=F, ls=F, lr, ...) {
-  # Find the optimal parameter values using one of three stochastic gradient
-  # methods for a linear model.
+  # Find the optimal parameter values using a stochastic gradient method for a
+  # linear model.
   #
   # Args:
   #   data: List of X, Y in particular form
@@ -26,11 +26,12 @@ sgd <- function(data, method, averaged=F, ls=F, lr, ...) {
   # check.data(data)
   n <- nrow(data$X)
   p <- ncol(data$X)
-  # matrix of estimates of SGD (p x iters)
+  # Initialize parameter matrix for sgd (p x iters).
   theta.sgd <- matrix(0, nrow=p, ncol=n+1)
+  # Initialize y matrix if least squares estimate desired (p x iters).
   if (ls == TRUE) y <- matrix(0, nrow=p, ncol=n+1)
 
-  for(i in 1:n) {
+  for (i in 1:n) {
     xi <- data$X[i, ]
     theta.old <- theta.sgd[, i]
 
@@ -47,17 +48,18 @@ sgd <- function(data, method, averaged=F, ls=F, lr, ...) {
 
     theta.sgd[, i+1] <- theta.new
   }
+
   if (averaged == TRUE) {
+    # Average over all estimates.
     theta.sgd <- t(apply(theta.sgd, 1, function(x) {
       cumsum(x)/(1:length(x))
     }))
   }
+
   if (ls == TRUE) {
+    # Run least squares fit over all estimates.
     beta.0 <- matrix(0, nrow=p, ncol=n+1)
     beta.1 <- matrix(0, nrow=p, ncol=n+1)
-    # The commented is the slower method but more readable and also slightly
-    # more accurate in numerical precision(?). They disagree by 1e-4.
-    #theta.sgd.ls <- matrix(0, nrow=p, ncol=n+1)
     for (i in 2:(n+1)) {
       x.i <- theta.sgd[, 1:i]
       y.i <- y[, 1:i]
@@ -65,15 +67,20 @@ sgd <- function(data, method, averaged=F, ls=F, lr, ...) {
       bar.y.i <- rowMeans(y.i)
       beta.1[, i] <- rowSums(y.i*(x.i - bar.x.i))/rowSums((x.i - bar.x.i)^2)
       beta.0[, i] <- bar.y.i - beta.1[, i] * bar.x.i
+    }
+    theta.sgd <- -beta.0/beta.1
+    # This the slower method but more readable and also slightly
+    # more accurate in numerical precision(?). They disagree by 1e-4.
+    #theta.sgd.ls <- matrix(0, nrow=p, ncol=n+1)
+    #for (i in 2:(n+1)) {
       #for (j in 1:p) {
       #  y.i <- y[j, 1:i]
       #  x.i <- theta.sgd[j, 1:i]
       #  lm.est <- lm(y.i~x.i)$coefficients
       #  theta.sgd.ls[j, i] <- -lm.est[1]/lm.est[2]
       #}
-    }
+    #}
     #theta.sgd <- theta.sgd.ls
-    theta.sgd <- -beta.0/beta.1
   }
 
   return(theta.sgd)
@@ -90,8 +97,8 @@ batch <- function(data) {
   #   p x niters matrix where the jth column is the jth theta update
 
   # check.data(data)
-  n = nrow(data$X)
-  p = ncol(data$X)
+  n <- nrow(data$X)
+  p <- ncol(data$X)
 
   # matrix of estimates of batch (p x niters)
   theta.batch <- t(apply(data$X, 2, function(x) {
@@ -121,7 +128,7 @@ lr.implicit <- function(n) {
 subset.idx <- c(seq(100, 900, by=100), seq(1000, 1e5, by=1000))
 
 # Set method based on job.id.
-job.id <- as.integer(commandArgs(trailingOnly = TRUE))
+job.id <- as.integer(commandArgs(trailingOnly=TRUE))
 if (job.id == 1) {
   theta <- sgd(d, method="explicit", lr=lr.explicit)[, subset.idx]
 } else if (job.id == 2) {
@@ -133,4 +140,4 @@ if (job.id == 1) {
 }
 
 # Save outputs into individual files.
-save(d, theta, file=sprintf("out/xu_fig1_%i.RData", job.id))
+save(d, theta, file=sprintf("out/xu_section6_1_%i.RData", job.id))

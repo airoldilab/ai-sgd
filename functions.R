@@ -1,3 +1,5 @@
+# This is a collection of auxiliary functions for usage in other scripts.
+
 fracSec <- function() {
   # Generate a seed number based on the current time.
   now <- as.vector(as.POSIXct(Sys.time())) / 1000
@@ -6,7 +8,7 @@ fracSec <- function() {
 
 random.orthogonal <- function(p) {
   # Get an orthogonal matrix.
-  B = matrix(runif(p^2), nrow=p)
+  B <- matrix(runif(p^2), nrow=p)
   qr.Q(qr(B))
 }
 
@@ -35,24 +37,23 @@ sample.data <- function(dim.n, A, theta=matrix(1, ncol=1, nrow=nrow(A)),
   #
   # Returns:
   #   A list with (Y, X, A, true theta).
-  dim.p = nrow(A)
+  dim.p <- nrow(A)
   # This call will make the appropriate checks on A.
-  X = rmvnorm(dim.n, mean=rep(0, dim.p), sigma=A)
-  epsilon = rnorm(dim.n, mean=0, sd=1)
+  X <- rmvnorm(dim.n, mean=rep(0, dim.p), sigma=A)
+  epsilon <- rnorm(dim.n, mean=0, sd=1)
   # Data generation
-  y = X %*% theta  + epsilon
+  y <- X %*% theta  + epsilon
   return(list(Y=y, X=X, A=A, theta=theta))
 }
 
-# This function is taken directly from Panos' example.
 check.data <- function(data) {
   # Do this to check the data object.
   #
-  nx = nrow(data$X)
-  ny = length(data$Y)
-  p = ncol(data$X)
+  nx <- nrow(data$X)
+  ny <- length(data$Y)
+  p <- ncol(data$X)
   stopifnot(nx==ny, p==length(data$theta))
-  lambdas = eigen(cov(data$X))$values
+  lambdas <- eigen(cov(data$X))$values
   print(lambdas)
   print(mean(data$Y))
   print(var(data$Y))
@@ -76,10 +77,10 @@ plot.risk <- function(data, est) {
 
   list.bias <- list()
   for (i in 1:length(est)) {
-    values = apply(est[[i]], 2, function(colum)
+    values <- apply(est[[i]], 2, function(colum)
         t(colum-data$theta) %*% data$A %*% (colum-data$theta))
     if (is.null(colnames(est[[i]]))) {
-      list.bias[[i]] = data.frame(
+      list.bias[[i]] <- data.frame(
         t=1:length(values),
         est.bias=values,
         method=names(est)[i]
@@ -87,7 +88,7 @@ plot.risk <- function(data, est) {
     # This is to account for batch method, which we do not compute each
     # iteration but a subset of them.
     } else {
-      list.bias[[i]] = data.frame(
+      list.bias[[i]] <- data.frame(
         t=as.integer(colnames(est[[i]])),
         est.bias=values,
         method=names(est)[i]
