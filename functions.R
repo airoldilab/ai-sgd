@@ -4,34 +4,43 @@ fracSec <- function() {
   as.integer(abs(now - trunc(now)) * 10^8)
 }
 
-# This function is taken directly from Panos' example.
 random.orthogonal <- function(p) {
   # Get an orthogonal matrix.
   B = matrix(runif(p^2), nrow=p)
   qr.Q(qr(B))
 }
 
-# This function is taken directly from Panos' example.
-generate.A <- function(p) {
-  # Create A matrix (variance of the covariates xn)
-  Q = random.orthogonal(p)
-  lambdas = seq(0.01, 1, length.out=p)
-  A = Q %*% diag(lambdas) %*% t(Q)
+generate.A <- function(p, lambdas=seq(0.01, 1, length.out=p)) {
+  # Generate a random matrix with the desired eigenvalues.
+  #
+  # Args:
+  #   p: dimension of matrix
+  #   lambdas: vector of eigenvalues of length p
+  #
+  # Returns:
+  #   A p-by-p matrix with eigenvalues lambda.
+  Q <- random.orthogonal(p)
+  A <- Q %*% diag(lambdas) %*% t(Q)
   return(A)
 }
 
-# This function is taken directly from Panos' example.
-sample.data <- function(dim.n, A,
+sample.data <- function(dim.n, A, theta=matrix(1, ncol=1, nrow=nrow(A)),
                         model="gaussian") {
-  # Samples the dataset. Returns a list with (Y, X, A ,true theta)
+  # Samples the dataset.
+  #
+  # Args:
+  #   dim.n: size of dataset
+  #   A: covariance matrix for generating multivariate normal samples
+  #   theta: true parameter values
+  #
+  # Returns:
+  #   A list with (Y, X, A, true theta).
   dim.p = nrow(A)
   # This call will make the appropriate checks on A.
   X = rmvnorm(dim.n, mean=rep(0, dim.p), sigma=A)
-  theta = matrix(1, ncol=1, nrow=dim.p)
   epsilon = rnorm(dim.n, mean=0, sd=1)
   # Data generation
   y = X %*% theta  + epsilon
-
   return(list(Y=y, X=X, A=A, theta=theta))
 }
 

@@ -9,28 +9,6 @@ library(mvtnorm)
 
 source("functions.R")
 
-generate.A <- function(p) {
-  # Create A matrix (variance of the covariates xn)
-  Q = random.orthogonal(p)
-  lambdas = c(rep(1, 3), rep(0.02, p-3))
-  A = Q %*% diag(lambdas) %*% t(Q)
-  return(A)
-}
-
-sample.data <- function(dim.n, A,
-                        model="gaussian") {
-  # Samples the dataset. Returns a list with (Y, X, A ,true theta)
-  dim.p = nrow(A)
-  # This call will make the appropriate checks on A.
-  X = rmvnorm(dim.n, mean=rep(0, dim.p), sigma=A)
-  theta = matrix(0, ncol=1, nrow=dim.p)
-  epsilon = rnorm(dim.n, mean=0, sd=1)
-  # Data generation
-  y = X %*% theta  + epsilon
-
-  return(list(Y=y, X=X, A=A, theta=theta))
-}
-
 sgd <- function(data, method, averaged=F, ls=F, lr, ...) {
   # Find the optimal parameter values using one of three stochastic gradient
   # methods for a linear model.
@@ -125,8 +103,8 @@ batch <- function(data) {
 
 # Sample data.
 set.seed(42)
-A <- generate.A(p=100)
-d <- sample.data(dim.n=1e5, A)
+A <- generate.A(p=100, lambdas=c(rep(1, 3), rep(0.02, 97)))
+d <- sample.data(dim.n=1e5, A, theta=matrix(0, ncol=1, nrow=nrow(A)))
 
 # Construct functions for learning rate.
 lr.explicit <- function(n) {
@@ -147,12 +125,10 @@ job.id <- as.integer(commandArgs(trailingOnly = TRUE))
 if (job.id == 1) {
   theta <- sgd(d, method="explicit", lr=lr.explicit)[, subset.idx]
 } else if (job.id == 2) {
-  theta <- sgd(d, method="explicit", averaged=T, lr=lr.avg)[, subset.idx]
-} else if (job.id == 3) {
   theta <- sgd(d, method="implicit", lr=lr.implicit)[, subset.idx]
-} else if (job.id == 4) {
+} else if (job.id == 3) {
   theta <- sgd(d, method="implicit", averaged=T, lr=lr.implicit)[, subset.idx]
-} else if (job.id == 5) {
+} else if (job.id == 4) {
   theta <- batch(d)[, subset.idx]
 }
 

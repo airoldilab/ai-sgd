@@ -13,22 +13,12 @@ for (i in 1:9) {
 
   # Get method.
   if (i == 1) {
-    method <- "E-SGD"
+    method <- "SGD"
   } else if (i == 2) {
-    method <- "AE-SGD"
-  } else if (i == 3) {
-    method <- "LSE-SGD"
-  } else if (i == 4) {
-    method <- "LSAE-SGD"
-  } else if (i == 5) {
     method <- "I-SGD"
-  } else if (i == 6) {
+  } else if (i == 3) {
     method <- "AI-SGD"
-  } else if (i == 7) {
-    method <- "LSI-SGD"
-  } else if (i == 8) {
-    method <- "LSAI-SGD"
-  } else if (i == 9) {
+  } else if (i == 4) {
     method <- "Batch"
   }
 
