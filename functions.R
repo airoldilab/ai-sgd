@@ -26,21 +26,23 @@ generate.A <- function(p, lambdas=seq(0.01, 1, length.out=p)) {
   return(A)
 }
 
-sample.data <- function(dim.n, A, theta=matrix(1, ncol=1, nrow=nrow(A)),
-                        model="gaussian") {
+sample.data <- function(dim.n, A, 
+                        theta=matrix(1, ncol=1, nrow=nrow(A)),
+                        model="gaussian",
+                        noise.sd=1) {
   # Samples the dataset.
   #
   # Args:
   #   dim.n: size of dataset (#no. samples)
   #   A: covariance matrix for generating multivariate normal samples
   #   theta: true parameter values
-  #
+  #   noise.sd = standard deviation of the noise.
   # Returns:
   #   A list with (Y, X, A, true theta).
   dim.p <- nrow(A)
   # This call will make the appropriate checks on A.
   X <- rmvnorm(dim.n, mean=rep(0, dim.p), sigma=A)
-  epsilon <- rnorm(dim.n, mean=0, sd=1)
+  epsilon <- rnorm(dim.n, mean=0, sd=noise.sd)
   # Data generation
   y <- X %*% theta  + epsilon
   return(list(Y=y, X=X, A=A, theta=theta))
