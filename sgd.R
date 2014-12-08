@@ -1,13 +1,12 @@
-# Stochastic gradient function to be used in both Friedman et. al, section 5.1,
-# and Xu, section 6.2.
+# Quick implementation of SGD algorithms for GLM models.
 #
-sgd <- function(data, method, averaged=F, ls=F, lr, ...) {
+sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
   # Find the optimal parameter values using a stochastic gradient method for a
   # linear model.
   #
   # Args:
-  #   data: List of X, Y in particular form
-  #   method: "explicit" or "implicit"
+  #   data: DATA object created through sample.data(..) (see functions.R)
+  #   sgd.method: "explicit" or "implicit"
   #   averaged: boolean of whether or not to average estimates
   #   ls: boolean of whether or not to use least squares estimate
   #   lr: function which computes learning rate with input the iterate index
@@ -16,40 +15,69 @@ sgd <- function(data, method, averaged=F, ls=F, lr, ...) {
   #   p x (n+1) matrix where the jth column is the jth theta update
 
   # Check input
-  stopifnot(is.element(c("X", "Y"), names(data)))
+  stopifnot(all(is.element(c("X", "Y", "model"), names(data))))
   n <- nrow(data$X)
   p <- ncol(data$X)
+  glm.model = data$model
   # Initialize parameter matrix for sgd (p x iters).
-  theta.sgd <- matrix(0, nrow=p, ncol=n+1)
+  # Will return this matrix.
+  theta.sgd <- matrix(0, nrow=p, ncol=n)
   # Initialize y matrix if least squares estimate desired (p x iters).
-  if (ls == TRUE) y <- matrix(0, nrow=p, ncol=n+1)
-
-  for (i in 1:n) {
+  y <- NULL
+  ai <- NULL
+  theta.new <- NULL
+  if (ls == TRUE) {
+    y <- matrix(0, nrow=p, ncol=n+1)
+  }
+  # Main iteration: i = #sample index.
+  # Assumes: y, ai,   Updates: theta.new
+  for (i in 2:n) {
     xi <- data$X[i, ]
-    theta.old <- theta.sgd[, i]
-
-    # Compute learning rate.
-    if (method == "explicit") {
-      ai <- lr(i, p, ...)
-    } else if (method == "implicit") {
-      ai <- lr(i, ...)
-    }
-
+    yi <- data$Y[i]
+    theta.old <- theta.sgd[, i-1]
+    
     # Make computation easier.
     xi.norm <- sum(xi^2)
-    lpred <- sum(theta.old * xi)
-    fi <- 1 / (1 + ai * sum(xi^2))
-    yi <- data$Y[i]
-
-    # Update.
-    if (ls == TRUE) y[, i+1] <- data$A %*% (xi - theta.old)
-    if (method == "explicit") {
-      theta.new <- (theta.old - ai * lpred * xi) + ai * yi * xi
-    } else if (method == "implicit") {
-      theta.new <- theta.old  - ai * fi * (lpred - yi) * xi
+    lpred = sum(xi * theta.old)
+    y.pred <- glm.model$h(lpred)  # link function of GLM.
+    
+    # Calculate learning rate.
+    if (sgd.method == "explicit") {
+      ai <- lr(i, p, ...)
+    } else if (sgd.method == "implicit") {
+      ai <- lr(i, ...)
+    }
+    
+    # Make the update.
+    if (ls == TRUE) {
+      y[, i] <- data$A %*% (xi - theta.old)
+    }
+    
+    if (sgd.method == "explicit") {
+      theta.new <- theta.old + ai * (yi - y.pred) * xi
+    } else if (sgd.method == "implicit") {
+      # 1. Define the search interval
+      ri = ai * (yi - y.pred)
+      Bi = c(0, ri)
+      if(ri < 0) {
+        Bi <- c(ri, 0)
+      }
+      
+      implicit.fn <- function(u) {
+        u  - ai * (yi - glm.model$h(lpred + xi.norm * u))
+      }
+      # 2. Solve implicit equation
+      ksi.new = NA
+      if(Bi[2] != Bi[1]) {
+        ksi.new = uniroot(implicit.fn, interval=Bi)$root
+      }
+      else {
+        ksi.new = Bi[1]
+      }
+      theta.new = theta.old + ksi.new * xi
     }
 
-    theta.sgd[, i+1] <- theta.new
+    theta.sgd[, i] <- theta.new
   }
 
   if (averaged == TRUE) {
