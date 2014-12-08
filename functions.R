@@ -1,4 +1,25 @@
 # This is a collection of auxiliary functions for usage in other scripts.
+logistic <- function(x) {
+  if(x > 20) return(1)
+  if(x < -20) return(0)
+  return(exp(x) / (1+exp(x)))
+}
+
+get.glm.model <- function(model="gaussian") {
+  # Returns the link/link--deriv functions of the specified GLM model.
+  #
+  if(model=="gaussian") return(list(name=model, 
+                                    h=function(x) x, 
+                                    hprime=function(x) 1))
+  if(model=="poisson") return(list(name=model, 
+                                   h=function(x) exp(x), 
+                                   hprime=function(x) exp(x)))
+  if(model=="logistic") return(list(name=model, 
+                                    h=function(x) logistic(x), 
+                                    hprime=function(x) logistic(x) * (1-logistic(x))))
+  stop(sprintf("Model %s is not supported...", model))
+}
+
 
 fracSec <- function() {
   # Generate a seed number based on the current time.
@@ -28,8 +49,7 @@ generate.A <- function(p, lambdas=seq(0.01, 1, length.out=p)) {
 
 sample.data <- function(dim.n, A, 
                         theta=matrix(1, ncol=1, nrow=nrow(A)),
-                        model="gaussian",
-                        noise.sd=1) {
+                        glm.model=get.glm.model("gaussian")) {
   # Samples the dataset.
   #
   # Args:
@@ -37,15 +57,33 @@ sample.data <- function(dim.n, A,
   #   A: covariance matrix for generating multivariate normal samples
   #   theta: true parameter values
   #   noise.sd = standard deviation of the noise.
+  #
   # Returns:
   #   A list with (Y, X, A, true theta).
   dim.p <- nrow(A)
   # This call will make the appropriate checks on A.
   X <- rmvnorm(dim.n, mean=rep(0, dim.p), sigma=A)
-  epsilon <- rnorm(dim.n, mean=0, sd=noise.sd)
-  # Data generation
-  y <- X %*% theta  + epsilon
-  return(list(Y=y, X=X, A=A, theta=theta))
+  lpred = X %*% theta
+  
+  if(glm.model$name=="gaussian") {
+    epsilon <- rnorm(dim.n, mean=0, sd=1)
+    # Data generation
+    y <- lpred  + epsilon
+  } else if(glm.model$name=="poisson") {
+    y = rpois(dim.n, lambda = glm.model$h(lpred))
+  } else if(glm.model$name=="logistic") {
+    y = rbinom(dim.n, size = 1, prob=glm.model$h(lpred))
+  } else {
+    stop(sprintf("GLM model %s is not implemented..", glm.model$name))
+  }
+  # Return the DATA object.
+  # Y = outcomes (n x 1)
+  # X = covariates (n x p)
+  # theta = true params. (p x 1)
+  # L = X * theta
+  # model = GLM model (see get.glm.model(..))
+  # A = covariance matrix for the X.
+  return(list(Y=y, X=X, L=lpred, model=glm.model, A=A, theta=theta))
 }
 
 check.data <- function(data) {
@@ -61,7 +99,7 @@ check.data <- function(data) {
   print(1 + sum(cov(data$X)))
 }
 
-plot.risk <- function(data, est) {
+plot.risk <- function(data, est, max.iter) {
   # Plot estimated biases of the optimization routines performed.
   #
   # Args:
@@ -103,10 +141,11 @@ plot.risk <- function(data, est) {
   dat <- do.call(rbind, list.bias)
 
   # Plot.
+  # TODO: Make the plot a bit cleaner (e.g. larger size?)
   return(dat %>%
     ggplot(aes(x=t, y=est.bias, group=method, color=method)) +
       geom_line() +
-      scale_x_log10(limits=c(1e2, 1e5), breaks=10^(2:5)) +
+      scale_x_log10(limits=c(1, max.iter), breaks=10^(2:5)) +
       scale_y_log10(limits=c(1e-4, 1e4), breaks=10^(seq(-4,4,2))) +
       xlab("Training size t") +
       ylab("Excess risk") +
