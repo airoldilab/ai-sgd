@@ -74,9 +74,12 @@ plot.risk <- function(data, est) {
   library(ggplot2)
 
   list.bias <- list()
+  # 1. iterate over method
   for (i in 1:length(est)) {
+    # 1b. Get the risk values for specific method "i"
     values <- apply(est[[i]], 2, function(colum)
         t(colum-data$theta) %*% data$A %*% (colum-data$theta))
+    # 2. Get the risk (bias) values into a list.
     if (is.null(colnames(est[[i]]))) {
       list.bias[[i]] <- data.frame(
         t=1:length(values),
