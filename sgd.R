@@ -71,7 +71,8 @@ sgd <- function(data, method, averaged=F, ls=F, lr, ...) {
       beta.0[, i] <- bar.y.i - beta.1[, i] * bar.x.i
     }
     theta.sgd <- -beta.0/beta.1
-    # This the slower method but more readable and also slightly
+    # TODO: Cleanup?
+    # his the slower method but more readable and also slightly
     # more accurate in numerical precision(?). They disagree by 1e-4.
     #theta.sgd.ls <- matrix(0, nrow=p, ncol=n+1)
     #for (i in 2:(n+1)) {
