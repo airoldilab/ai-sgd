@@ -2,7 +2,7 @@
 # Replicate the experiment set in Xu, section 6.2, and compare other methods.
 #
 # @pre "img/" directory exists
-
+rm(list=ls())
 library(dplyr)
 library(ggplot2)
 library(mvtnorm)
@@ -23,6 +23,10 @@ batch <- function(data, sequence) {
   #   p x niters matrix where the jth column is the jth theta update
 
   # check.data(data)
+  warning("Batch method needs to be updated to use data$model.")
+  # TODO: Current implementation assumes linear normal model.
+  #     Need to update using glm() and the appropriate family
+  #     according to the specification in data$model$name.
   n <- nrow(data$X)
   p <- ncol(data$X)
   # matrix of estimates of batch (p x niters)
@@ -30,30 +34,24 @@ batch <- function(data, sequence) {
   colnames(theta.batch) <- sequence
 
   idx <- 1
+  # i = max datapoint to be included.
+  stopifnot(length(sequence) > 0, sequence[1] > 1)
   for (i in sequence) {
-    if (i == 1) {
-      dat <- as.data.frame(cbind(
-        t(data$X[1:i, ]),
-        data$Y[1:i]
-        ))
-    } else {
-      dat <- as.data.frame(cbind(
-        data$X[1:i, ],
-        data$Y[1:i]
-        ))
-    }
-    names(dat)[p+1] <- "Y"
-    theta.batch[, idx] <- lm(Y ~ . + 0, data=dat)$coefficients
+    X = data$X[1:i, ]
+    y = data$Y[1:i]
+    theta.batch[, idx] <- as.numeric(lm(y ~ X + 0)$coefficients)
     idx <- idx + 1
   }
-
+  
   return(theta.batch)
 }
 
-run.all <- function() {
+run.all <- function(dim.n=1e4, dim.p=1e1, sgd.alpha=100) {
+  # Runs all experiments for the Xu setup.
   set.seed(42)
-  A <- generate.A(p=100)
-  d <- sample.data(dim.n=1e5, A)
+  A <- generate.A(dim.p)
+  d <- sample.data(dim.n, A, glm.model = get.glm.model("gaussian"),
+                   theta=2 * exp(-seq(1, dim.p)))
   
   # Construct functions for learning rate.
   lr.explicit <- function(n, p, alpha) {
@@ -66,14 +64,24 @@ run.all <- function() {
   
   # Optimize!
   theta <- list()
-  theta$sgd <- sgd(d, method="explicit", lr=lr.explicit, alpha=100)
-  theta$asgd <- sgd(d, method="explicit", averaged=T, lr=lr.explicit, alpha=100)
-  theta$isgd <- sgd(d, method="implicit", lr=lr.implicit, alpha=100)
-  theta$batch <- batch(d, sequence=round(seq(1e2+1, 1e5, length.out=100)))
+  cat("Running SGD explicit..\n")
+  theta$sgd <- sgd(d, sgd.method="explicit", lr=lr.explicit, alpha=sgd.alpha)
+  cat("Running averaged SGD explicit..\n")
+  theta$asgd <- sgd(d, sgd.method="explicit", averaged=T, 
+                    lr=lr.explicit, alpha=sgd.alpha)
+  cat("Running SGD implicit..\n")
+  theta$isgd <- sgd(d, sgd.method="implicit", 
+                    lr=lr.implicit, alpha=sgd.alpha)
+  
+  if(d$model$name=="gaussian") {
+    cat("Running batch method..\n")
+    theta$batch <- batch(d, sequence=round(seq(dim.p + 10, dim.n, length.out=100)))  
+  } else {
+    warning("Silencing batch method -- needs update.")
+  }
   
   # Reproduce the plot in Xu Section 6.2 and export it.
-  png("img/xu_section6_2.png", width=1280, height=720)
-  plot.risk(d, theta)
-  dev.off()
-  
+  # png("out/xu_section6_2.png", width=1280, height=720)
+  plot.risk(d, theta, dim.n)
+  # dev.off()
 }
