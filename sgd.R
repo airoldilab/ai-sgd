@@ -1,6 +1,6 @@
 # Stochastic gradient function to be used in both Friedman et. al, section 5.1,
 # and Xu, section 6.2.
-
+#
 sgd <- function(data, method, averaged=F, ls=F, lr, ...) {
   # Find the optimal parameter values using a stochastic gradient method for a
   # linear model.
@@ -15,7 +15,8 @@ sgd <- function(data, method, averaged=F, ls=F, lr, ...) {
   # Returns:
   #   p x (n+1) matrix where the jth column is the jth theta update
 
-  # check.data(data)
+  # Check input
+  stopifnot(is.element(c("X", "Y"), names(data)))
   n <- nrow(data$X)
   p <- ncol(data$X)
   # Initialize parameter matrix for sgd (p x iters).

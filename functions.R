@@ -31,7 +31,7 @@ sample.data <- function(dim.n, A, theta=matrix(1, ncol=1, nrow=nrow(A)),
   # Samples the dataset.
   #
   # Args:
-  #   dim.n: size of dataset
+  #   dim.n: size of dataset (#no. samples)
   #   A: covariance matrix for generating multivariate normal samples
   #   theta: true parameter values
   #

@@ -50,28 +50,30 @@ batch <- function(data, sequence) {
   return(theta.batch)
 }
 
-# Sample data.
-set.seed(42)
-A <- generate.A(p=100)
-d <- sample.data(dim.n=1e5, A)
-
-# Construct functions for learning rate.
-lr.explicit <- function(n, p, alpha) {
-  gamma0 <- 1 / (sum(seq(0.01, 1, length.out=p)))
-  alpha/(alpha/gamma0 + n)
+run.all <- function() {
+  set.seed(42)
+  A <- generate.A(p=100)
+  d <- sample.data(dim.n=1e5, A)
+  
+  # Construct functions for learning rate.
+  lr.explicit <- function(n, p, alpha) {
+    gamma0 <- 1 / (sum(seq(0.01, 1, length.out=p)))
+    alpha/(alpha/gamma0 + n)
+  }
+  lr.implicit <- function(n, alpha) {
+    alpha/(alpha + n)
+  }
+  
+  # Optimize!
+  theta <- list()
+  theta$sgd <- sgd(d, method="explicit", lr=lr.explicit, alpha=100)
+  theta$asgd <- sgd(d, method="explicit", averaged=T, lr=lr.explicit, alpha=100)
+  theta$isgd <- sgd(d, method="implicit", lr=lr.implicit, alpha=100)
+  theta$batch <- batch(d, sequence=round(seq(1e2+1, 1e5, length.out=100)))
+  
+  # Reproduce the plot in Xu Section 6.2 and export it.
+  png("img/xu_section6_2.png", width=1280, height=720)
+  plot.risk(d, theta)
+  dev.off()
+  
 }
-lr.implicit <- function(n, alpha) {
-  alpha/(alpha + n)
-}
-
-# Optimize!
-theta <- list()
-theta$sgd <- sgd(d, method="explicit", lr=lr.explicit, alpha=100)
-theta$asgd <- sgd(d, method="explicit", averaged=T, lr=lr.explicit, alpha=100)
-theta$isgd <- sgd(d, method="implicit", lr=lr.implicit, alpha=100)
-theta$batch <- batch(d, sequence=round(seq(1e2+1, 1e5, length.out=100)))
-
-# Reproduce the plot in Xu Section 6.2 and export it.
-png("img/xu_section6_2.png", width=1280, height=720)
-plot.risk(d, theta)
-dev.off()
