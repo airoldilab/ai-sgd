@@ -50,7 +50,7 @@ run.all <- function(dim.n=1e4, dim.p=1e1, sgd.alpha=100) {
   # Runs all experiments for the Xu setup.
   set.seed(42)
   A <- generate.A(dim.p)
-  d <- sample.data(dim.n, A, glm.model = get.glm.model("gaussian"),
+  d <- sample.data(dim.n, A, glm.model = get.glm.model("poisson"),
                    theta=2 * exp(-seq(1, dim.p)))
   
   # Construct functions for learning rate.
