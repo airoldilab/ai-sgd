@@ -19,43 +19,8 @@ library(ggplot2)
 library(mvtnorm)
 
 source("functions.R")
+source("batch.R")
 source("sgd.R")
-
-batch <- function(data, sequence) {
-  # Find the optimal parameter values using the batch method for a linear
-  # model.
-  #
-  # Args:
-  #   data: List of x, y, A, theta in particular form
-  #   seq: Vector of iterate indices to calculate the batch method for. (In
-  #        case you would only like to compute a subset of them.)
-  #
-  # Returns:
-  #   p x niters matrix where the jth column is the jth theta update
-
-  # check.data(data)
-  warning("Batch method needs to be updated to use data$model.")
-  # TODO: Current implementation assumes linear normal model.
-  #     Need to update using glm() and the appropriate family
-  #     according to the specification in data$model$name.
-  n <- nrow(data$X)
-  p <- ncol(data$X)
-  # matrix of estimates of batch (p x niters)
-  theta.batch <- matrix(0, nrow=p, ncol=length(sequence))
-  colnames(theta.batch) <- sequence
-
-  idx <- 1
-  # i = max datapoint to be included.
-  stopifnot(length(sequence) > 0, sequence[1] > 1)
-  for (i in sequence) {
-    X = data$X[1:i, ]
-    y = data$Y[1:i]
-    theta.batch[, idx] <- as.numeric(lm(y ~ X + 0)$coefficients)
-    idx <- idx + 1
-  }
-
-  return(theta.batch)
-}
 
 run.all <- function(dim.n=1e4, dim.p=1e1, sgd.alpha=100) {
   # Runs all experiments for the Xu setup.
@@ -75,26 +40,23 @@ run.all <- function(dim.n=1e4, dim.p=1e1, sgd.alpha=100) {
 
   # Optimize!
   theta <- list()
-  print("Running SGD explicit..")
-  theta$sgd <- sgd(d, sgd.method="explicit", lr=lr.explicit, alpha=sgd.alpha)
-  print("Running averaged SGD explicit..")
-  theta$asgd <- sgd(d, sgd.method="explicit", averaged=T,
-                    lr=lr.explicit, alpha=sgd.alpha)
-  print("Running SGD implicit..")
-  theta$isgd <- sgd(d, sgd.method="implicit",
+  print("Running explicit SGD..")
+  theta$SGD <- sgd(d, sgd.method="explicit",
+                   lr=lr.explicit, alpha=sgd.alpha)
+  print("Running implicit SGD..")
+  theta$ISGD <- sgd(d, sgd.method="implicit",
                     lr=lr.implicit, alpha=sgd.alpha)
+  print("Running averaged implicit SGD..")
+  theta$`AI-SGD` <- sgd(d, sgd.method="implicit", averaged=T,
+                        lr=lr.implicit, alpha=sgd.alpha)
+  print("Running batch method..")
+  theta$Batch <- batch(d, sequence=round(10^seq(
+    log(dim.p + 10, base=10),
+    log(dim.n, base=10), length.out=100))
+    ) # the sequence is equally spaced points on the log scale
 
-  if(d$model$name=="gaussian") {
-    print("Running batch method..")
-    theta$batch <- batch(d, sequence=round(seq(dim.p + 10, dim.n, length.out=100)))
-  } else {
-    warning("Silencing batch method -- needs update.")
-  }
-
-  # Reproduce the plot in Xu Section 6.2 and export it.
-  # png("img/xu_section6_2.png", width=1280, height=720)
+  # Plot and save image.
+  #png("img/exp_poisson_n4p1.png", width=1280, height=720)
   plot.risk(d, theta, dim.n)
-  # dev.off()
+  #dev.off()
 }
-
-run.all()

@@ -1,5 +1,5 @@
-# Quick implementation of SGD algorithms for GLM models.
-#
+# An implementation of stochastic gradient methods for GLMs.
+
 sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
   # Find the optimal parameter values using a stochastic gradient method for a
   # generalized linear model.
@@ -7,16 +7,18 @@ sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
   # Args:
   #   data: DATA object created through sample.data(..) (see functions.R)
   #   sgd.method: "explicit" or "implicit"
-  #   averaged: boolean of whether or not to average estimates
-  #   ls: boolean of whether or not to use least squares estimate
+  #   averaged: boolean specifying whether to average estimates
+  #   ls: boolean specifying whether to use least squares estimate
   #   lr: function which computes learning rate with input the iterate index
   #
   # Returns:
-  #   p x n matrix where the jth column is the jth theta update
+  #   A p x n matrix where the jth column is the jth theta update.
 
   # Check input.
-  stopifnot(all(is.element(c("X", "Y", "model"), names(data))))
-  stopifnot(sgd.method %in% c("explicit", "implicit"))
+  stopifnot(
+    all(is.element(c("X", "Y", "model"), names(data))),
+    sgd.method %in% c("explicit", "implicit")
+  )
   n <- nrow(data$X)
   p <- ncol(data$X)
   glm.model <- data$model
