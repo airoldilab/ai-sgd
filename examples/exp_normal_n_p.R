@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
-# Compare optimization methods for linear regression on the following
-# simulated dataset.
-# DGP:
+# Compare optimization methods for linear regression on the following simulated
+# dataset.
+#
+# Data generating process:
 #   Y = sum_{j=1}^p X_j*beta_j + k*epsilon, where
 #     X ~ Multivariate normal where each covariate Xj, Xj' has equal correlation
 #       rho; rho ranges over (0,0.1,0.2,0.5,0.9,0.95) for each pair (n, p)

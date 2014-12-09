@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
-# Compare optimization methods for Poisson regression on the following
-# simulated dataset.
-# DGP:
+# Compare optimization methods for Poisson regression on the following simulated
+# dataset.
+#
+# Data generating process:
 #   Y ~ Poisson(lambda), where lambda = exp(X %*% theta)
 #     X ~ Normal(0, A), where A is a randomly generated matrix with
 #       eigenvalues (0.01,...,0.01)

@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
-# Compare optimization methods for linear regression on the following
-# simulated dataset.
-# DGP:
+# Compare optimization methods for linear regression on the following simulated
+# dataset.
+#
+# Data generating process:
 #   Y = X %*% theta + epsilon, where
 #     X ~ Normal(0, A), where A is a randomly generated matrix with eigenvalues
 #     (1,1,1,0.02,0.02,...,0.02)
