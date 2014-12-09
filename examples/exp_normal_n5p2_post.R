@@ -12,7 +12,7 @@ list.bias <- list()
 subset.idx <- c(seq(100, 900, by=100), seq(1000, 1e5, by=1000))
 for (i in 1:4) {
   # Load all data to plot.
-  load(sprintf("out/xu_section6_1_%i.RData", i))
+  load(sprintf("out/exp_normal_n5p2_%i.RData", i))
 
   # Get method.
   if (i == 1) {
@@ -47,4 +47,4 @@ dat %>%
     xlab("Training size t") +
     ylab("Excess risk") +
     ggtitle("Excess risk over training size")
-ggsave("img/exp_normal_n5_p2.png")
+ggsave("img/exp_normal_n5p2.png")

@@ -7,7 +7,7 @@
 #     X ~ Multivariate normal where each covariate Xj, Xj' has equal correlation
 #       rho; rho ranges over (0,0.1,0.2,0.5,0.9,0.95) for each pair (n, p)
 #     beta_j = (-1)^j exp(-2(j-1)/20)
-#     epsilon ~ N(0,1)
+#     epsilon ~ Normal(0,1)
 #     k = 3
 # Dimensions:
 #   n=1000, p=100

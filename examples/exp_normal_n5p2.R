@@ -7,7 +7,7 @@
 #     X ~ Normal(0, A), where A is a randomly generated matrix with eigenvalues
 #     (1,1,1,0.02,0.02,...,0.02)
 #     theta = (0,...,0)
-#     epsilon ~ N(0, 1)
+#     epsilon ~ Normal(0,1)
 # Dimensions:
 #   n=1e5 observations
 #   p=1e2 parameters
@@ -140,4 +140,4 @@ if (job.id == 1) {
 }
 
 # Save outputs into individual files.
-save(d, theta, file=sprintf("out/exp_normal_n5_p2_%i.RData", job.id))
+save(d, theta, file=sprintf("out/exp_normal_n5p2_%i.RData", job.id))
