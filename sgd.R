@@ -2,7 +2,7 @@
 #
 sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
   # Find the optimal parameter values using a stochastic gradient method for a
-  # linear model.
+  # generalized linear model.
   #
   # Args:
   #   data: DATA object created through sample.data(..) (see functions.R)
@@ -12,17 +12,18 @@ sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
   #   lr: function which computes learning rate with input the iterate index
   #
   # Returns:
-  #   p x (n+1) matrix where the jth column is the jth theta update
+  #   p x n matrix where the jth column is the jth theta update
 
-  # Check input
+  # Check input.
   stopifnot(all(is.element(c("X", "Y", "model"), names(data))))
+  stopifnot(sgd.method %in% c("explicit", "implicit"))
   n <- nrow(data$X)
   p <- ncol(data$X)
-  glm.model = data$model
-  # Initialize parameter matrix for sgd (p x iters).
+  glm.model <- data$model
+  # Initialize parameter matrix for sgd (p x n).
   # Will return this matrix.
   theta.sgd <- matrix(0, nrow=p, ncol=n)
-  # Initialize y matrix if least squares estimate desired (p x iters).
+  # Initialize y matrix if the least squares estimate is desired (p x n).
   y <- NULL
   ai <- NULL
   theta.new <- NULL
@@ -38,8 +39,8 @@ sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
 
     # Make computation easier.
     xi.norm <- sum(xi^2)
-    lpred = sum(xi * theta.old)
-    y.pred <- glm.model$h(lpred)  # link function of GLM.
+    lpred <- sum(xi * theta.old)
+    y.pred <- glm.model$h(lpred)  # link function of GLM
 
     # Calculate learning rate.
     if (sgd.method == "explicit") {
@@ -56,25 +57,25 @@ sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
     if (sgd.method == "explicit") {
       theta.new <- theta.old + ai * (yi - y.pred) * xi
     } else if (sgd.method == "implicit") {
-      # 1. Define the search interval
-      ri = ai * (yi - y.pred)
-      Bi = c(0, ri)
+      # 1. Define the search interval.
+      ri <- ai * (yi - y.pred)
+      Bi <- c(0, ri)
       if(ri < 0) {
         Bi <- c(ri, 0)
       }
 
       implicit.fn <- function(u) {
-        u  - ai * (yi - glm.model$h(lpred + xi.norm * u))
+        u - ai * (yi - glm.model$h(lpred + xi.norm * u))
       }
-      # 2. Solve implicit equation
-      ksi.new = NA
-      if(Bi[2] != Bi[1]) {
-        ksi.new = uniroot(implicit.fn, interval=Bi)$root
+      # 2. Solve implicit equation.
+      ksi.new <- NA
+      if (Bi[2] != Bi[1]) {
+        ksi.new <- uniroot(implicit.fn, interval=Bi)$root
       }
       else {
-        ksi.new = Bi[1]
+        ksi.new <- Bi[1]
       }
-      theta.new = theta.old + ksi.new * xi
+      theta.new <- theta.old + ksi.new * xi
     }
 
     theta.sgd[, i] <- theta.new
@@ -89,9 +90,9 @@ sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
 
   if (ls == TRUE) {
     # Run least squares fit over all estimates.
-    beta.0 <- matrix(0, nrow=p, ncol=n+1)
-    beta.1 <- matrix(0, nrow=p, ncol=n+1)
-    for (i in 2:(n+1)) {
+    beta.0 <- matrix(0, nrow=p, ncol=n)
+    beta.1 <- matrix(0, nrow=p, ncol=n)
+    for (i in 2:n) {
       x.i <- theta.sgd[, 1:i]
       y.i <- y[, 1:i]
       bar.x.i <- rowMeans(x.i)
