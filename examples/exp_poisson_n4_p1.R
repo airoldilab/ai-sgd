@@ -1,8 +1,18 @@
 #!/usr/bin/env Rscript
-# Replicate the experiment set in Xu, section 6.2, and compare other methods.
+# Compare optimization methods for Poisson regression on the following
+# simulated dataset.
+# DGP:
+#   Y ~ Poisson(lambda), where lambda = exp(X %*% theta)
+#     X ~ Normal(0, A), where A is a randomly generated matrix with
+#       eigenvalues (0.01,...,0.01)
+#     theta = (2*exp(-1),...,2*exp(-1))
+# Dimensions:
+#   n=1e4 observations
+#   p=1e1 parameters
 #
-# @pre "img/" directory exists
-rm(list=ls())
+# @pre Current working directory is the root directory of this repository
+# @pre Current working directory has the directory "img/"
+
 library(dplyr)
 library(ggplot2)
 library(mvtnorm)
@@ -42,7 +52,7 @@ batch <- function(data, sequence) {
     theta.batch[, idx] <- as.numeric(lm(y ~ X + 0)$coefficients)
     idx <- idx + 1
   }
-  
+
   return(theta.batch)
 }
 
@@ -52,7 +62,7 @@ run.all <- function(dim.n=1e4, dim.p=1e1, sgd.alpha=100) {
   A <- generate.A(dim.p)
   d <- sample.data(dim.n, A, glm.model = get.glm.model("poisson"),
                    theta=2 * exp(-seq(1, dim.p)))
-  
+
   # Construct functions for learning rate.
   lr.explicit <- function(n, p, alpha) {
     gamma0 <- 1 / (sum(seq(0.01, 1, length.out=p)))
@@ -61,27 +71,29 @@ run.all <- function(dim.n=1e4, dim.p=1e1, sgd.alpha=100) {
   lr.implicit <- function(n, alpha) {
     alpha/(alpha + n)
   }
-  
+
   # Optimize!
   theta <- list()
-  cat("Running SGD explicit..\n")
+  print("Running SGD explicit..")
   theta$sgd <- sgd(d, sgd.method="explicit", lr=lr.explicit, alpha=sgd.alpha)
-  cat("Running averaged SGD explicit..\n")
-  theta$asgd <- sgd(d, sgd.method="explicit", averaged=T, 
+  print("Running averaged SGD explicit..")
+  theta$asgd <- sgd(d, sgd.method="explicit", averaged=T,
                     lr=lr.explicit, alpha=sgd.alpha)
-  cat("Running SGD implicit..\n")
-  theta$isgd <- sgd(d, sgd.method="implicit", 
+  print("Running SGD implicit..")
+  theta$isgd <- sgd(d, sgd.method="implicit",
                     lr=lr.implicit, alpha=sgd.alpha)
-  
+
   if(d$model$name=="gaussian") {
-    cat("Running batch method..\n")
-    theta$batch <- batch(d, sequence=round(seq(dim.p + 10, dim.n, length.out=100)))  
+    print("Running batch method..")
+    theta$batch <- batch(d, sequence=round(seq(dim.p + 10, dim.n, length.out=100)))
   } else {
     warning("Silencing batch method -- needs update.")
   }
-  
+
   # Reproduce the plot in Xu Section 6.2 and export it.
-  # png("out/xu_section6_2.png", width=1280, height=720)
+  # png("img/xu_section6_2.png", width=1280, height=720)
   plot.risk(d, theta, dim.n)
   # dev.off()
 }
+
+run.all()

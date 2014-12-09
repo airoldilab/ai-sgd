@@ -1,8 +1,19 @@
 #!/usr/bin/env Rscript
-# Replicate the experiment set in Xu, section 6.1, and compare other methods.
+# Compare optimization methods for linear regression on the following
+# simulated dataset.
+# DGP:
+#   Y = X %*% theta + epsilon, where
+#     X ~ Normal(0, A), where A is a randomly generated matrix with eigenvalues
+#     (1,1,1,0.02,0.02,...,0.02)
+#     theta = (0,...,0)
+#     epsilon ~ N(0, 1)
+# Dimensions:
+#   n=1e5 observations
+#   p=1e2 parameters
 #
-# @pre "out/" directory exists
-# @pre "img/" directory exists
+# @pre Current working directory is the root directory of this repository
+# @pre Current working directory has the directory "img/"
+# @pre Current working directory has the directory "out/"
 
 library(MASS)
 library(mvtnorm)
@@ -69,18 +80,6 @@ sgd <- function(data, method, averaged=F, ls=F, lr, ...) {
       beta.0[, i] <- bar.y.i - beta.1[, i] * bar.x.i
     }
     theta.sgd <- -beta.0/beta.1
-    # This the slower method but more readable and also slightly
-    # more accurate in numerical precision(?). They disagree by 1e-4.
-    #theta.sgd.ls <- matrix(0, nrow=p, ncol=n+1)
-    #for (i in 2:(n+1)) {
-      #for (j in 1:p) {
-      #  y.i <- y[j, 1:i]
-      #  x.i <- theta.sgd[j, 1:i]
-      #  lm.est <- lm(y.i~x.i)$coefficients
-      #  theta.sgd.ls[j, i] <- -lm.est[1]/lm.est[2]
-      #}
-    #}
-    #theta.sgd <- theta.sgd.ls
   }
 
   return(theta.sgd)
@@ -140,4 +139,4 @@ if (job.id == 1) {
 }
 
 # Save outputs into individual files.
-save(d, theta, file=sprintf("out/xu_section6_1_%i.RData", job.id))
+save(d, theta, file=sprintf("out/exp_normal_n5_p2_%i.RData", job.id))

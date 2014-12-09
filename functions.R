@@ -8,14 +8,14 @@ logistic <- function(x) {
 get.glm.model <- function(model="gaussian") {
   # Returns the link/link--deriv functions of the specified GLM model.
   #
-  if(model=="gaussian") return(list(name=model, 
-                                    h=function(x) x, 
+  if(model=="gaussian") return(list(name=model,
+                                    h=function(x) x,
                                     hprime=function(x) 1))
-  if(model=="poisson") return(list(name=model, 
-                                   h=function(x) exp(x), 
+  if(model=="poisson") return(list(name=model,
+                                   h=function(x) exp(x),
                                    hprime=function(x) exp(x)))
-  if(model=="logistic") return(list(name=model, 
-                                    h=function(x) logistic(x), 
+  if(model=="logistic") return(list(name=model,
+                                    h=function(x) logistic(x),
                                     hprime=function(x) logistic(x) * (1-logistic(x))))
   stop(sprintf("Model %s is not supported...", model))
 }
@@ -47,7 +47,7 @@ generate.A <- function(p, lambdas=seq(0.01, 1, length.out=p)) {
   return(A)
 }
 
-sample.data <- function(dim.n, A, 
+sample.data <- function(dim.n, A,
                         theta=matrix(1, ncol=1, nrow=nrow(A)),
                         glm.model=get.glm.model("gaussian")) {
   # Samples the dataset.
@@ -60,11 +60,12 @@ sample.data <- function(dim.n, A,
   #
   # Returns:
   #   A list with (Y, X, A, true theta).
+  library(mvtnorm)
   dim.p <- nrow(A)
   # This call will make the appropriate checks on A.
   X <- rmvnorm(dim.n, mean=rep(0, dim.p), sigma=A)
   lpred = X %*% theta
-  
+
   if(glm.model$name=="gaussian") {
     epsilon <- rnorm(dim.n, mean=0, sd=1)
     # Data generation

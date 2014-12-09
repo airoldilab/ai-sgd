@@ -1,6 +1,22 @@
 #!/usr/bin/env Rscript
-# Replicate the experiment set in Friedman et. al, section 5.1, and compare
-# other methods.
+# Compare optimization methods for linear regression on the following
+# simulated dataset.
+# DGP:
+#   Y = sum_{j=1}^p X_j*beta_j + k*epsilon, where
+#     X ~ Multivariate normal where each covariate Xj, Xj' has equal correlation
+#       rho; rho ranges over (0,0.1,0.2,0.5,0.9,0.95) for each pair (n, p)
+#     beta_j = (-1)^j exp(-2(j-1)/20)
+#     epsilon ~ N(0,1)
+#     k = 3
+# Dimensions:
+#   n=1000, p=100
+#   n=5000, p=100
+#   n=100, p=1000
+#   n=100, p=5000
+#   n=100, p=20000
+#   n=100, p=50000
+#
+# @pre Current working directory is the root directory of this repository
 
 library(dplyr)
 library(mvtnorm)

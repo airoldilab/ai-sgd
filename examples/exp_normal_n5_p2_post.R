@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
-# Replicate the experiment set in Xu, section 6.1, and compare other methods.
+# Post-process the output obtained from running "exp_normal_n5_p2.R".
 #
-# @pre "xu_section6_1.slurm" was run successfully
+# @pre Current working directory is the root directory of this repository
+# @pre Current working directory has the directory "img/"
 
 library(dplyr)
 library(ggplot2)
@@ -46,4 +47,4 @@ dat %>%
     xlab("Training size t") +
     ylab("Excess risk") +
     ggtitle("Excess risk over training size")
-ggsave("img/xu_section6_1.png")
+ggsave("img/exp_normal_n5_p2.png")
