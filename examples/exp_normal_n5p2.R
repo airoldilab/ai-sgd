@@ -96,10 +96,10 @@ batch <- function(data, sequence) {
 
 # Sample data.
 set.seed(42)
-A <- generate.A(p=100, lambdas=c(rep(1, 3), rep(0.02, 97)))
-d <- sample.data(dim.n=1e5, A, theta=matrix(0, ncol=1, nrow=nrow(A)))
+X.list <- generate.X.A(n=1e5, p=1e2, lambdas=c(rep(1, 3), rep(0.02, 97)))
+d <- generate.data(X.list, theta=matrix(0, ncol=1, nrow=nrow(A)))
 
-# Construct functions for learning rate.
+# Construct functions for learning rate according to Xu.
 lr.explicit <- function(n, p) {
   1/(1 + 0.02*n)
 }

@@ -24,50 +24,17 @@ library(mvtnorm)
 library(glmnet)
 library(tidyr)
 
+source("functions.R")
 source("sgd.R")
 
-# This function is taken directly from Panos' example.
-genx2 = function(n,p,rho){
-  #    generate x's multivariate normal with equal corr rho
-  # Xi = b Z + Wi, and Z, Wi are independent normal.
-  # Then Var(Xi) = b^2 + 1
-  #  Cov(Xi, Xj) = b^2  and so cor(Xi, Xj) = b^2 / (1+b^2) = rho
-  z=rnorm(n)
-  if(abs(rho)<1){
-    beta=sqrt(rho/(1-rho))
-    x0=matrix(rnorm(n*p),ncol=p)
-    A = matrix(z, nrow=n, ncol=p, byrow=F)
-    x= beta * A + x0
-  }
-  if(abs(rho)==1){ x=matrix(z,nrow=n,ncol=p,byrow=F)}
-
-  return(x)
-}
-
-# This function is taken directly from Panos' example.
-sample.data <- function(dim.n, dim.p, rho=0.0, snr=1) {
-  # Samples the dataset according to Friedman et. al.
-  #
-  # 1. sample covariates
-  X = genx2(dim.n, dim.p, rho)
-  # 2. ground truth params.
-  theta = ((-1)^(1:dim.p))*exp(-2*((1:dim.p)-1)/20)
-
-  f= X %*% theta
-  e = rnorm(dim.n)
-  k= sqrt(var(f)/(snr*var(e)))
-  y=f+k*e
-  return(list(y=y, X=X, theta=theta))
-}
-
-# This function is taken directly from Panos' example.
 dist <- function(x, y) {
-  if(length(x) != length(y))
+  if (length(x) != length(y)) {
     stop("MSE should compare vectors of same length")
+  }
   sqrt(mean((x-y)^2))
 }
 
-# Construct functions for learning rate.
+# Construct learning rate functions.
 lr.explicit <- function(n, p, rho) {
   b <- rho/(1-rho)
   gamma0 <- 1/((b^2+1)*p)
@@ -95,14 +62,9 @@ simul.test <- function(dim.n,
   #   A data frame displaying rho, the simulation number, the time it took,
   #   the mean squared error, and the method used.
   library(glmnet)
-  if(!exists("sgd")) {
-    stop("sgd() does not exist. You need to source it.")
-  }
-  if(!exists("lr.explicit")) {
-    stop("lr.explicit() does not exist. You need to construct it.")
-  }
-  if(!exists("lr.implicit")) {
-    stop("lr.implicit() does not exist. You need to construct it.")
+  for (fn in c("sgd", "generate.X.corr", "generate.data", "lr.explicit",
+               "lr.implicit")) {
+    if(!exists(fn)) stop(sprintf("%s does not exist.", fn))
   }
 
   # Initialize.
@@ -121,39 +83,39 @@ simul.test <- function(dim.n,
         set.seed(seeds[niters])
 
         # Sample data.
-        dataset <- sample.data(dim.n=dim.n, dim.p=dim.p, rho=rho, snr=3.0)
-        true.theta <- dataset$theta
-        x <- dataset$X
-        y <- dataset$y
-        stopifnot(nrow(x) == dim.n, ncol(x) == dim.p)
+        X.list <- generate.X.corr(dim.n, dim.p, rho=rho)
+        theta <- ((-1)^(1:dim.p))*exp(-2*((1:dim.p)-1)/20)
+        dataset <- generate.data(X.list, theta, snr=3)
+        X <- dataset$X
+        y <- dataset$Y
+        stopifnot(nrow(X) == dim.n, ncol(X) == dim.p)
 
         # Run glmnet (naive).
         new.dt <- system.time(
-          {fit=glmnet(x, y, alpha=1, standardize=FALSE, type.gaussian="naive")}
+          {fit=glmnet(X, y, alpha=1, standardize=FALSE, type.gaussian="naive")}
         )[1]
-        new.mse <- median(apply(fit$beta, 2, function(est) dist(est, true.theta)))
+        new.mse <- median(apply(fit$beta, 2, function(est) dist(est, theta)))
         timings <- rbind(timings, c(rho, i, new.dt, new.mse, "naive"))
 
         # Run glmnet (covariance).
         new.dt <- system.time(
-          {fit=glmnet(x, y, alpha=1, standardize=FALSE, type.gaussian="covariance")}
+          {fit=glmnet(X, y, alpha=1, standardize=FALSE, type.gaussian="covariance")}
         )[1]
-        new.mse <- median(apply(fit$beta, 2, function(est) dist(est, true.theta)))
+        new.mse <- median(apply(fit$beta, 2, function(est) dist(est, theta)))
         timings <- rbind(timings, c(rho, i, new.dt, new.mse, "cov"))
 
-        d <- list(X=dataset$X, Y=dataset$y)
         # Run stochastic gradient descent (explicit).
         new.dt <- system.time(
-          {fit=sgd(d, method="explicit", lr=lr.explicit, rho=rho)}
+          {fit=sgd(dataset, sgd.method="explicit", lr=lr.explicit, rho=rho)}
         )[1]
-        new.mse <- dist(fit[, ncol(fit)], true.theta)
+        new.mse <- dist(fit[, ncol(fit)], theta)
         timings <- rbind(timings, c(rho, i, new.dt, new.mse, "explicit"))
 
         # Run stochastic gradient descent (implicit).
         new.dt <- system.time(
-          {fit=sgd(d, method="implicit", lr=lr.implicit)}
+          {fit=sgd(dataset, sgd.method="implicit", lr=lr.implicit)}
         )[1]
-        new.mse <- dist(fit[, ncol(fit)], true.theta)
+        new.mse <- dist(fit[, ncol(fit)], theta)
         timings <- rbind(timings, c(rho, i, new.dt, new.mse, "implicit"))
 
        setTxtProgressBar(pb, niters/total.iters)

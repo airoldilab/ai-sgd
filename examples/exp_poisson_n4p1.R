@@ -25,9 +25,10 @@ source("sgd.R")
 run.all <- function(dim.n=1e4, dim.p=1e1, sgd.alpha=100) {
   # Runs all experiments for the Xu setup.
   set.seed(42)
-  A <- generate.A(dim.p)
-  d <- sample.data(dim.n, A, glm.model = get.glm.model("poisson"),
-                   theta=2 * exp(-seq(1, dim.p)))
+  X.list <- generate.X.A(dim.n, dim.p)
+  d <- generate.data(X.list,
+                     glm.model=get.glm.model("poisson"),
+                     theta=2 * exp(-seq(1, dim.p)))
 
   # Construct functions for learning rate.
   lr.explicit <- function(n, p, alpha) {
@@ -36,6 +37,9 @@ run.all <- function(dim.n=1e4, dim.p=1e1, sgd.alpha=100) {
   }
   lr.implicit <- function(n, alpha) {
     alpha/(alpha + n)
+  }
+  lr.avg <- function(n, alpha, D) {
+    D/n^alpha
   }
 
   # Optimize!
@@ -49,6 +53,9 @@ run.all <- function(dim.n=1e4, dim.p=1e1, sgd.alpha=100) {
   print("Running averaged implicit SGD..")
   theta$`AI-SGD` <- sgd(d, sgd.method="implicit", averaged=T,
                         lr=lr.implicit, alpha=sgd.alpha)
+  #print("Running averaged implicit SGD..")
+  #theta$`AI-SGD,D=1/0.01,alpha=1` <- sgd(d, sgd.method="implicit", averaged=T,
+  #                      lr=lr.avg, alpha=1, D=1/0.01)
   print("Running batch method..")
   theta$Batch <- batch(d, sequence=round(10^seq(
     log(dim.p + 10, base=10),

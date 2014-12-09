@@ -30,7 +30,7 @@ sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
   ai <- NULL
   theta.new <- NULL
   if (ls == TRUE) {
-    y <- matrix(0, nrow=p, ncol=n+1)
+    y <- matrix(0, nrow=p, ncol=n)
   }
   # Main iteration: i = #sample index.
   # Assumes: y, ai,   Updates: theta.new
