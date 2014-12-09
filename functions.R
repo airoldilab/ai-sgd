@@ -104,9 +104,9 @@ plot.risk <- function(data, est, max.iter) {
   # Plot estimated biases of the optimization routines performed.
   #
   # Args:
-  #   data: List of x, y, A, theta in particular form
-  #   est: A list of matrix estimates, one for each set of optimization
-  #        methods done on the data.
+  #   data: DATA object created through sample.data(..) (see functions.R)
+  #   est: A list of matrix estimates, one for each optimization method run on
+  #        data.
   #
   # Returns:
   #   A log-log scaled plot with a curve for each optimization routine,
