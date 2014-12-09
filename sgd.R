@@ -35,24 +35,24 @@ sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
     xi <- data$X[i, ]
     yi <- data$Y[i]
     theta.old <- theta.sgd[, i-1]
-    
+
     # Make computation easier.
     xi.norm <- sum(xi^2)
     lpred = sum(xi * theta.old)
     y.pred <- glm.model$h(lpred)  # link function of GLM.
-    
+
     # Calculate learning rate.
     if (sgd.method == "explicit") {
       ai <- lr(i, p, ...)
     } else if (sgd.method == "implicit") {
       ai <- lr(i, ...)
     }
-    
+
     # Make the update.
     if (ls == TRUE) {
       y[, i] <- data$A %*% (xi - theta.old)
     }
-    
+
     if (sgd.method == "explicit") {
       theta.new <- theta.old + ai * (yi - y.pred) * xi
     } else if (sgd.method == "implicit") {
@@ -62,7 +62,7 @@ sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
       if(ri < 0) {
         Bi <- c(ri, 0)
       }
-      
+
       implicit.fn <- function(u) {
         u  - ai * (yi - glm.model$h(lpred + xi.norm * u))
       }
@@ -100,19 +100,6 @@ sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
       beta.0[, i] <- bar.y.i - beta.1[, i] * bar.x.i
     }
     theta.sgd <- -beta.0/beta.1
-    # TODO: Cleanup?
-    # his the slower method but more readable and also slightly
-    # more accurate in numerical precision(?). They disagree by 1e-4.
-    #theta.sgd.ls <- matrix(0, nrow=p, ncol=n+1)
-    #for (i in 2:(n+1)) {
-      #for (j in 1:p) {
-      #  y.i <- y[j, 1:i]
-      #  x.i <- theta.sgd[j, 1:i]
-      #  lm.est <- lm(y.i~x.i)$coefficients
-      #  theta.sgd.ls[j, i] <- -lm.est[1]/lm.est[2]
-      #}
-    #}
-    #theta.sgd <- theta.sgd.ls
   }
 
   return(theta.sgd)
