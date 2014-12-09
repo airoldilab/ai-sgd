@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
-# Compare optimization methods for linear regression on the following simulated
-# dataset.
+# Compare optimization methods for linear regression on simulated data from
+# a correlated normal distribution.
 #
 # Data generating process:
 #   Y = sum_{j=1}^p X_j*beta_j + k*epsilon, where

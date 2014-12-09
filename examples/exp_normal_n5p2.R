@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
-# Compare optimization methods for linear regression on the following simulated
-# dataset.
+# Compare optimization methods for linear regression on simulated data from a
+# normal distribution.
 #
 # Data generating process:
 #   Y = X %*% theta + epsilon, where

@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Post-process the output obtained from running "exp_normal_n5_p2.R".
+# Make a plot using the output obtained from running "exp_normal_n5p2.R".
 #
 # @pre Current working directory is the root directory of this repository
 # @pre Current working directory has the directory "img/"
