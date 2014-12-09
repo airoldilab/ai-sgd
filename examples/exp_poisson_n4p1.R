@@ -5,7 +5,7 @@
 # Data generating process:
 #   Y ~ Poisson(lambda), where lambda = exp(X %*% theta)
 #     X ~ Normal(0, A), where A is a randomly generated matrix with
-#       eigenvalues (0.01,...,0.01)
+#       eigenvalues being equally spaced points from 0.01 to 1
 #     theta = (2*exp(-1),...,2*exp(-1))
 # Dimensions:
 #   n=1e4 observations
@@ -57,6 +57,6 @@ run.all <- function(dim.n=1e4, dim.p=1e1, sgd.alpha=100) {
 
   # Plot and save image.
   #png("img/exp_poisson_n4p1.png", width=1280, height=720)
-  plot.risk(d, theta, dim.n)
+  plot.risk(d, theta)
   #dev.off()
 }

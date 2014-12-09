@@ -100,7 +100,7 @@ check.data <- function(data) {
   print(1 + sum(cov(data$X)))
 }
 
-plot.risk <- function(data, est, max.iter) {
+plot.risk <- function(data, est) {
   # Plot estimated biases of the optimization routines performed.
   #
   # Args:
@@ -142,12 +142,14 @@ plot.risk <- function(data, est, max.iter) {
   dat <- do.call(rbind, list.bias)
 
   # Plot.
+  # Get range of iterations to plot (equivalent to c(dim.p, dim.n))
+  iter.range <- c(max(sapply(est, nrow)), max(sapply(est, ncol)))
   # TODO: Make the plot a bit cleaner (e.g. larger size?)
   return(dat %>%
     ggplot(aes(x=t, y=est.bias, group=method, color=method)) +
       geom_line() +
-      scale_x_log10(limits=c(1, max.iter), breaks=10^(2:5)) +
-      scale_y_log10(limits=c(1e-4, 1e4), breaks=10^(seq(-4,4,2))) +
+      scale_x_log10(limits=iter.range, breaks=10^(0:9)) +
+      scale_y_log10(limits=c(1e-4, 1e4), breaks=10^(seq(-6,6,2))) +
       xlab("Training size t") +
       ylab("Excess risk") +
       ggtitle("Excess risk over training size")
