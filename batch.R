@@ -1,6 +1,6 @@
 # An implementation of batch gradient descent for GLMs.
 
-batch <- function(data, sequence=1:nrow(data$X), intercept=F) {
+batch <- function(data, sequence=1:nrow(data$X), intercept=F, slope=T) {
   # Find the optimal parameter values using batch gradient descent for a
   # generalized linear model.
   #
@@ -10,6 +10,7 @@ batch <- function(data, sequence=1:nrow(data$X), intercept=F) {
   #             case you only aim to run batch on a subset of indices.
   #             Default is all indices.
   #   intercept: boolean specifying whether to include intercept term for regression
+  #   slope: boolean specifying whether to include slope term for regression
   #
   # Returns:
   #   A p x length(sequence) matrix where the jth column is the theta update
@@ -22,6 +23,13 @@ batch <- function(data, sequence=1:nrow(data$X), intercept=F) {
   )
   p <- ncol(data$X)
   glm.model <- data$model
+  # Return the mean if one desires to fit with a zero slope.
+  if (slope == FALSE) {
+    theta.batch <- t(apply(data$X, 2, function(x) {
+      cumsum(x)/(1:length(x))
+      }))
+    return(theta.batch[, sequence])
+  }
   # Initialize parameter matrix for batch (p x length(sequence)).
   # Will return this matrix.
   theta.batch <- matrix(0, nrow=p, ncol=length(sequence))

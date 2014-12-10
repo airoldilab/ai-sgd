@@ -20,7 +20,7 @@ library(MASS)
 library(mvtnorm)
 
 source("functions.R")
-#source("batch.R")
+source("batch.R")
 #source("sgd.R")
 
 sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
@@ -57,11 +57,11 @@ sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
     }
 
     # Update.
-    if (ls == TRUE) y[, i+1] <- data$A %*% (xi - theta.old)
     if (sgd.method == "explicit") {
-      theta.new <- theta.old + (ai/2) * data$A %*% (xi - theta.old)
+      theta.new <- theta.old + (ai/2) * data$obs.data$A %*% (xi - theta.old)
     } else if (sgd.method == "implicit") {
-      theta.new <- solve(diag(p) + (ai/2)*data$A) %*% (theta.old + (ai/2)*data$A%*%xi)
+      theta.new <- solve(diag(p) + (ai/2)*data$obs.data$A) %*% (theta.old +
+      (ai/2)*data$obs.data$A%*%xi)
     }
 
     theta.sgd[, i+1] <- theta.new
@@ -77,27 +77,10 @@ sgd <- function(data, sgd.method, averaged=F, ls=F, lr, ...) {
   return(theta.sgd)
 }
 
-batch <- function(data, sequence) {
-  # Find the optimal parameter values using the batch method for a linear
-  # model.
-  #
-  # Args:
-  #   data: List of x, y, A, theta in particular form
-  #
-  # Returns:
-  #   p x niters matrix where the jth column is the jth theta update
-
-  # matrix of estimates of batch (p x niters)
-  theta.batch <- t(apply(data$X, 2, function(x) {
-    cumsum(x)/(1:length(x))
-    }))
-  return(theta.batch[, sequence])
-}
-
 # Sample data.
 set.seed(42)
 X.list <- generate.X.A(n=1e5, p=1e2, lambdas=c(rep(1, 3), rep(0.02, 97)))
-d <- generate.data(X.list, theta=matrix(0, ncol=1, nrow=nrow(A)))
+d <- generate.data(X.list, theta=matrix(0, ncol=1, nrow=1e2))
 
 # Construct functions for learning rate according to Xu.
 lr.explicit <- function(n, p) {
@@ -122,7 +105,7 @@ if (job.id == 1) {
 } else if (job.id == 3) {
   theta <- sgd(d, sgd.method="implicit", averaged=T, lr=lr.implicit)[, subset.idx]
 } else if (job.id == 4) {
-  theta <- batch(d, sequence=subset.idx)
+  theta <- batch(d, sequence=subset.idx, slope=F)
 }
 
 # Save outputs into individual files.

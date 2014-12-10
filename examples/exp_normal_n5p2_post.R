@@ -29,7 +29,7 @@ for (i in 1:4) {
   list.bias[[i]] <- data.frame(
     t=subset.idx,
     est.bias=apply(theta, 2, function(colum) {
-      t(colum) %*% d$A %*% colum
+      t(colum) %*% d$obs.data$A %*% colum
       }),
     method=method
     )
