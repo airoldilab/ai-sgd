@@ -163,7 +163,7 @@ print.data <- function(data) {
 
 plot.risk <- function(data, est) {
   # Plot estimated biases of the optimization routines performed.
-  # TODO: Generalize to not just Normal(0, A) models.
+  # TODO: Generalize this function beyond Normal(0, A) data.
   #
   # Args:
   #   data: DATA object created through sample.data(..) (see functions.R)
@@ -216,6 +216,105 @@ plot.risk <- function(data, est) {
       ylab("Excess risk") +
       ggtitle("Excess risk over training size")
   )
+}
+
+benchmark <- function(n, p, rho, nreps=3) {
+  # Benchmark stochastic gradient methods along with glmnet.
+  # TODO: Generalize this function beyond correlated Normal data.
+  #
+  # Args:
+  #   n: number of observations
+  #   p: number of parameters
+  #   rho: correlation
+  #   nreps: number of replications
+  #
+  # Returns:
+  #   A (number of methods) x 4 data frame with the following columns:
+  #     method, average elapsed time, average mean squared error,
+  #     number of replications
+  library(glmnet)
+  for (fn in c("sgd", "generate.X.corr", "generate.data")) {
+    if(!exists(fn)) stop(sprintf("%s does not exist.", fn))
+  }
+
+  # Initialize results data frame (nmethods*nrhos x 5).
+  # Will return this object.
+  nmethods <- 4
+  results <- as.data.frame(matrix(NA, nrow=nmethods, ncol=4))
+  names(results) <- c("method", "time", "mse", "replications")
+  results$method <- c("glmnet.naive", "glmnet.cov", "sgd.explicit",
+                      "sgd.implicit")
+  results$replications <- nreps
+
+  # Initialize temporary matrices to store times and mean squared errors per
+  # replication (nmethods x nreps).
+  times <- matrix(NA, nrow=nmethods, ncol=nreps)
+  mses <- matrix(NA, nrow=nmethods, ncol=nreps)
+
+  # Initialize seeds.
+  set.seed(42)
+  seeds <- sample(1:1e9, size=nreps)
+
+  # Construct auxiliary functions used for the methods.
+  dist <- function(x, y) {
+    # Calculate mean squared error.
+    if (length(x) != length(y)) {
+      stop("MSE should compare vectors of same length")
+    }
+    sqrt(mean((x-y)^2))
+  }
+  lr.explicit <- function(n, p, rho) {
+    b <- rho/(1-rho)
+    gamma0 <- 1/((b^2+1)*p)
+    lambda0 <- 1
+    alpha <- 1/lambda0
+    return(alpha/(alpha/gamma0 + n))
+  }
+  lr.implicit <- function(n) {
+    lambda0 <- 1
+    alpha <- 1/lambda0
+    return(alpha/(alpha + n))
+  }
+
+  # Run each simulation.
+  pb <- txtProgressBar(style=3)
+  for (i in 1:nreps) {
+    # Set seed.
+    set.seed(seeds[i])
+
+    # Sample data.
+    X.list <- generate.X.corr(n, p, rho=rho)
+    theta <- ((-1)^(1:p))*exp(-2*((1:p)-1)/20)
+    dataset <- generate.data(X.list, theta, snr=3)
+    X <- dataset$X
+    y <- dataset$Y
+    stopifnot(nrow(X) == n, ncol(X) == p)
+
+    # Optimize!
+    times[1, i] <- system.time( # glmnet (naive)
+      {fit=glmnet(X, y, alpha=1, standardize=FALSE, type.gaussian="naive")}
+    )[1]
+    mses[1, i] <- median(apply(fit$beta, 2, function(est) dist(est, theta)))
+    times[2, i] <- system.time( # glmnet (covariance)
+      {fit=glmnet(X, y, alpha=1, standardize=FALSE, type.gaussian="covariance")}
+    )[1]
+    mses[2, i] <- median(apply(fit$beta, 2, function(est) dist(est, theta)))
+    times[3, i] <- system.time( # sgd (explicit)
+      {fit=sgd(dataset, sgd.method="explicit", lr=lr.explicit, rho=rho)}
+    )[1]
+    mses[3, i] <- dist(fit[, ncol(fit)], theta)
+    times[4, i] <- system.time( # sgd (implicit)
+      {fit=sgd(dataset, sgd.method="implicit", lr=lr.implicit)}
+    )[1]
+    mses[4, i] <- dist(fit[, ncol(fit)], theta)
+
+    setTxtProgressBar(pb, i/nreps)
+  }
+  # Take means of the simulation reults.
+  results$time <- rowMeans(times)
+  results$mse <- rowMeans(mses)
+  print("") # print newline
+  return(results)
 }
 
 ################################################################################
