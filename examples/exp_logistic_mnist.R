@@ -8,15 +8,15 @@
 #   p=784 parameters
 #
 # @pre Current working directory is the root directory of this repository
+# @pre Current working directory has the directory "out/"
+# @pre The files "examples/data/mnist_train.csv" and
+#      "examples/data/mnist_test.csv" exist and are downloaded from Kaggle.
 
 source("functions.R")
 source("sgd.R")
 
 # Read in training data.
-#train <- read.table("examples/data/mnist/train.csv", header=TRUE, sep=",")
-# Read in subset of data, obtained by sampling 1e4 rows from original training
-# data (set.seed(42); sample(1:42e3, size=1e4)).
-train <- read.csv("examples/data/mnist_n4.csv")
+train <- read.csv("examples/data/mnist_train.csv")
 
 # Construct learning rate. A tweak of the one in Ruppert.
 lr <- function(n) {
@@ -38,6 +38,7 @@ for (i in 0:8) {
   data$Y[train$label != i] <- 0
   data$Y[train$label == i] <- 1
   # Run IA-SGD.
+  print(sprintf("Running IA-SGD for binary classifier on %i..", i))
   list.theta[[i+1]] <- sgd(data, sgd.method="implicit", averaged=T, lr=lr)
 }
 
@@ -80,6 +81,8 @@ predict <- function(X, list.theta) {
   # precision.
   preds <- preds/rowSums(preds)
   preds[preds < 1e-8] <- 0
+  preds[is.nan(preds)] <- 1 # TODO: temporary bug fix, since these numbers are
+                            # so large(?)
   return(preds)
 }
 
@@ -89,3 +92,11 @@ train.pred.matrix <- predict(data$X, list.theta)
 train.pred <- unlist(apply(train.pred.matrix, 1, function(x) which.max(x))) - 1
 print(sprintf("Training Error for Multinomial Logistic Regression: %0.5f",
   sum(train.pred != train$label)/nrow(train)))
+
+# Make predictions on test data, and write to csv for submission to Kaggle.
+# Test Error: 14.757%
+test <- read.csv("examples/data/mnist_test.csv")
+test.pred.matrix <- predict(as.matrix(test), list.theta)
+test.pred <- unlist(apply(test.pred.matrix, 1, function(x) which.max(x))) - 1
+dat <- data.frame(ImageId=1:length(test.pred), Label=test.pred)
+write.csv(dat, file="out/mnist_predictions.csv", row.names=F, quote=F)
