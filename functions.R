@@ -104,7 +104,7 @@ generate.data <- function(X.list,
                           theta=matrix(1, ncol=1, nrow=ncol(X)),
                           glm.model=get.glm.model("gaussian"),
                           snr=Inf) {
-  # Samples the dataset.
+  # Generate the dataset.
   #
   # Args:
   #   X.list: list whose element X is the design matrix, and whose other
@@ -217,7 +217,10 @@ plot.risk <- function(data, est) {
   )
 }
 
-benchmark <- function(n, p, rho, nreps=3) {
+benchmark <- function(n, p, rho,
+                      methods=c("glmnet (naive)", "glmnet (cov)",
+                                "sgd (implicit)", "sgd (averaged implicit)"),
+                      nreps=3) {
   # Benchmark stochastic gradient methods along with glmnet.
   # TODO: Generalize this function beyond correlated Normal data.
   #
@@ -225,24 +228,26 @@ benchmark <- function(n, p, rho, nreps=3) {
   #   n: number of observations
   #   p: number of parameters
   #   rho: correlation
+  #   methods: vector of methods to benchmark. Options are "glmnet (naive)",
+  #            "glmnet (cov)", "sgd (explicit)", "sgd (averaged explicit)", "sgd
+  #            (implicit)", "sgd (averaged implicit)".
   #   nreps: number of replications
   #
   # Returns:
-  #   A (number of methods) x 4 data frame with the following columns:
-  #     method, average elapsed time, average mean squared error,
-  #     number of replications
+  #   A length(methods) x 4 data frame, with the following columns:
+  #     name of method, average elapsed time, average mean squared error, number
+  #     of replications
   library(glmnet)
   for (fn in c("sgd", "generate.X.corr", "generate.data")) {
     if(!exists(fn)) stop(sprintf("%s does not exist.", fn))
   }
 
-  # Initialize results data frame (nmethods*nrhos x 5).
+  # Initialize results data frame (nmethods x 5).
   # Will return this object.
-  nmethods <- 4
+  nmethods <- length(methods)
   results <- as.data.frame(matrix(NA, nrow=nmethods, ncol=4))
   names(results) <- c("method", "time", "mse", "replications")
-  results$method <- c("glmnet.naive", "glmnet.cov", "sgd.explicit",
-                      "sgd.implicit")
+  results$method <- methods
   results$replications <- nreps
 
   # Initialize temporary matrices to store times and mean squared errors per
@@ -281,31 +286,49 @@ benchmark <- function(n, p, rho, nreps=3) {
     # Set seed.
     set.seed(seeds[i])
 
-    # Sample data.
+    # Generate data.
     X.list <- generate.X.corr(n, p, rho=rho)
     theta <- ((-1)^(1:p))*exp(-2*((1:p)-1)/20)
-    dataset <- generate.data(X.list, theta, snr=3)
-    X <- dataset$X
-    y <- dataset$Y
-    stopifnot(nrow(X) == n, ncol(X) == p)
+    data <- generate.data(X.list, theta, snr=3)
 
     # Optimize!
-    times[1, i] <- system.time( # glmnet (naive)
-      {fit=glmnet(X, y, alpha=1, standardize=FALSE, type.gaussian="naive")}
-    )[1]
-    mses[1, i] <- median(apply(fit$beta, 2, function(est) dist(est, theta)))
-    times[2, i] <- system.time( # glmnet (covariance)
-      {fit=glmnet(X, y, alpha=1, standardize=FALSE, type.gaussian="covariance")}
-    )[1]
-    mses[2, i] <- median(apply(fit$beta, 2, function(est) dist(est, theta)))
-    times[3, i] <- system.time( # sgd (explicit)
-      {fit=sgd(dataset, sgd.method="explicit", lr=lr.explicit, rho=rho)}
-    )[1]
-    mses[3, i] <- dist(fit[, ncol(fit)], theta)
-    times[4, i] <- system.time( # sgd (implicit)
-      {fit=sgd(dataset, sgd.method="implicit", lr=lr.implicit)}
-    )[1]
-    mses[4, i] <- dist(fit[, ncol(fit)], theta)
+    for (j in 1:nmethods) {
+      if (methods[j] == "glmnet (naive)") {
+        time.j <- system.time(
+          {fit=glmnet(data$X, data$Y, alpha=1, standardize=FALSE,
+           type.gaussian="naive")}
+        )[1]
+        mse.j <- median(apply(fit$beta, 2, function(est) dist(est, theta)))
+      } else if (methods[j] == "glmnet (cov)") {
+        time.j <- system.time(
+          {fit=glmnet(data$X, data$Y, alpha=1, standardize=FALSE,
+           type.gaussian="covariance")}
+        )[1]
+        mse.j <- median(apply(fit$beta, 2, function(est) dist(est, theta)))
+      } else if (methods[j] == "sgd (explicit)") {
+        time.j <- system.time(
+          {fit=sgd(data, sgd.method="explicit", lr=lr.explicit, rho=rho)}
+        )[1]
+        mse.j <- dist(fit[, ncol(fit)], theta)
+      } else if (methods[j] == "sgd (averaged explicit)") {
+        time.j <- system.time(
+          {fit=sgd(data, sgd.method="explicit", lr=lr.explicit, rho=rho)}
+        )[1]
+        mse.j <- dist(fit[, ncol(fit)], theta)
+      } else if (methods[j] == "sgd (implicit)") {
+        time.j <- system.time(
+          {fit=sgd(data, sgd.method="implicit", lr=lr.implicit)}
+        )[1]
+        mse.j <- dist(fit[, ncol(fit)], theta)
+      } else if (methods[j] == "sgd (averaged implicit)") {
+        time.j <- system.time(
+          {fit=sgd(data, sgd.method="implicit", lr=lr.implicit)}
+        )[1]
+        mse.j <- dist(fit[, ncol(fit)], theta)
+      }
+      times[j, i] <- time.j
+      mses[j, i] <- mse.j
+    }
 
     setTxtProgressBar(pb, i/nreps)
   }

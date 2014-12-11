@@ -28,19 +28,21 @@ benchmark.all <- function(N=c(1000, 5000, 100, 100, 100, 100),
                           P=c(100, 100, 1000, 5000, 20000, 50000),
                           rhos=c(0.0, 0.1, 0.2, 0.5, 0.9, 0.95)) {
   # Run all experiments for the setup in Friedman et al.
-  # Initialize list of results, where each list element is a pair (N,p).
-  list.results <- list()
-  for (i in 1:length(N)) {
-    n <- N[i]
-    p <- P[i]
-    # Collect the benchmark data frame for each rho into a single data frame.
-    list.results[[i]] <- data.frame()
-    for (rho in rhos) {
-      print(sprintf("(n, p, rho): (%i, %i, %0.2f)", n, p, rho))
-      dat <- benchmark(n, p, rho)
-      list.results[[i]] <- rbind(list.results[[i]], cbind(dat, rho))
-    }
-    names(list.results)[i] <- sprintf("n=%i, p=%i", n, p)
+  # Initialize results data frame.
+  results <- as.data.frame(matrix(NA, nrow=length(N)*length(rhos), ncol=3))
+  names(results) <- c("n", "p", "rho")
+  results$n <- rep(N, length(rhos))
+  results$p <- rep(P, length(rhos))
+  results$rho <- rep(rhos, each=length(N))
+  # Collect the benchmark data.
+  dat <- data.frame()
+  for (i in 1:nrow(results)) {
+    n <- results$n[i]
+    p <- results$p[i]
+    rho <- results$rho[i]
+    print(sprintf("(n, p, rho): (%i, %i, %0.2f)", n, p, rho))
+    dat <- rbind(dat, benchmark(n, p, rho))
   }
-  return(list.results)
+  results <- cbind(results, dat)
+  return(results)
 }
