@@ -5,9 +5,8 @@
 ################################################################################
 
 logistic <- function(x) {
-  if(x > 20) return(1)
-  if(x < -20) return(0)
-  return(exp(x) / (1+exp(x)))
+  # Return logit transform.
+  return(1/(1+exp(-x)))
 }
 
 get.glm.model <- function(model="gaussian") {
