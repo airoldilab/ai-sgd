@@ -87,5 +87,5 @@ predict <- function(X, list.theta) {
 train.pred.matrix <- predict(data$X, list.theta)
 # note: subtract 1 since labels range from 0-9
 train.pred <- unlist(apply(train.pred.matrix, 1, function(x) which.max(x))) - 1
-print(sprintf("Training Error for Multinomial Logistic Regression: %0.5f", i,
-  sum(train.pred != train$label)/nrow(train)
+print(sprintf("Training Error for Multinomial Logistic Regression: %0.5f",
+  sum(train.pred != train$label)/nrow(train)))
