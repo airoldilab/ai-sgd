@@ -1,3 +1,4 @@
 dump/
 out/
 .Rhistory
+*.csv
