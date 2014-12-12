@@ -61,7 +61,7 @@ generate.X.A <- function(n, p, lambdas=seq(0.01, 1, length.out=p)) {
   #   lambdas: eigenvalues of A
   #
   # Returns:
-  #   A list, where X is the design matrix and A is the covariance.
+  #   A list, where X is the n x p matrix and A is the covariance.
   library(mvtnorm)
   A <- random.matrix(lambdas)
   X <- rmvnorm(n, mean=rep(0, p), sigma=A)
@@ -120,7 +120,7 @@ generate.data <- function(X.list,
   #     theta = true params. (p x 1)
   #     L = X * theta
   #     model = GLM model (see get.glm.model(..))
-  #     obs.data = any additional data used to generate X
+  #     obs.data = list containing any data used to generate X
   X <- X.list$X
   n <- nrow(X)
   p <- ncol(X)
@@ -241,8 +241,9 @@ benchmark <- function(n, p, rho,
   for (fn in c("sgd", "generate.X.corr", "generate.data")) {
     if(!exists(fn)) stop(sprintf("%s does not exist.", fn))
   }
+  pb <- txtProgressBar(style=3)
 
-  # Initialize results data frame (nmethods x 5).
+  # Initialize results data frame (nmethods x 4).
   # Will return this object.
   nmethods <- length(methods)
   results <- as.data.frame(matrix(NA, nrow=nmethods, ncol=4))
@@ -281,7 +282,6 @@ benchmark <- function(n, p, rho,
   }
 
   # Run each simulation.
-  pb <- txtProgressBar(style=3)
   for (i in 1:nreps) {
     # Set seed.
     set.seed(seeds[i])
@@ -328,9 +328,8 @@ benchmark <- function(n, p, rho,
       }
       times[j, i] <- time.j
       mses[j, i] <- mse.j
+      setTxtProgressBar(pb, (i*nmethods+j)/(nreps*nmethods))
     }
-
-    setTxtProgressBar(pb, i/nreps)
   }
   # Take means of the simulation reults.
   results$time <- rowMeans(times)
