@@ -103,7 +103,7 @@ generate.X.corr <- function(n, p, rho) {
 generate.data <- function(X.list,
                           theta=matrix(1, ncol=1, nrow=ncol(X)),
                           glm.model=get.glm.model("gaussian"),
-                          snr=Inf) {
+                          snr=1) {
   # Generate the dataset.
   #
   # Args:
@@ -112,6 +112,7 @@ generate.data <- function(X.list,
   #   theta: true parameters
   #   glm.model: GLM model (see get.glm.model(..))
   #   snr: signal-to-noise ratio
+  #     NOTE(ptoulis): cancelled SNR for now.
   #
   # Returns:
   #   The DATA object, which is a list with the following elements:
@@ -128,8 +129,8 @@ generate.data <- function(X.list,
   # Generate outcomes according to the specified GLM.
   if (glm.model$name == "gaussian") {
     epsilon <- rnorm(n, mean=0, sd=1)
-    k <- sqrt(var(lpred)/(snr*var(epsilon)))
-    y <- lpred + k*epsilon
+    # k <- sqrt(var(lpred)/(snr*var(epsilon)))
+    y <- lpred + epsilon
   } else if (glm.model$name == "poisson") {
     y <- rpois(n, lambda=glm.model$h(lpred))
   } else if (glm.model$name == "logistic") {
