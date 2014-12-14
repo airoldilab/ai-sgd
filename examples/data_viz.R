@@ -8,8 +8,11 @@ mnist.plot.digit <- function(mnist.data, id) {
   #   d = read.csv("examples/data/..train.csv")
   #   mnist.plot.digit(d, 100)
   #
+  print(sprintf("Checking data with id=%d", id))
   pixels = mnist.data[id, -c(1)]
-  stopifnot(length(pixels) == 28 * 28, all(is.element(pixels, 0:255)))
+  stopifnot(id <= nrow(mnist.data),
+            length(pixels) == 28 * 28, 
+            all(is.element(pixels, 0:255)))
   # Translate data to points and colors.
   loc = seq(0, length(pixels)-1)
   loc.x = loc %% 28
