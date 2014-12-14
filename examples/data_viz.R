@@ -1,4 +1,4 @@
-## Visualize the MNIST dataset.
+## Functions to visualize the datasets we run experiments on.
 #
 
 mnist.plot.digit <- function(mnist.data, id) {
