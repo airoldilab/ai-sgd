@@ -6,19 +6,20 @@ instructions on compiling can be found there. To use the files in this
 directory, copy the files from here to the `svm/` directory in Bottou's
 repository.
 
-You should then be able to compile (`make svmaisgd`) and run the
-program using specified commandline arguments (`./svmaisgd -lambda 5e-7 -epochs
-12 rcv1.train.bin.gz`).
+After downloading and preprocessing the necessary dataset(s), you should then be able to compile and run the program:
+```
+make svmaisgd
+./svmaisgd -lambda 5e-7 -epochs 8 -avgstart 1 rcv1.train.bin.gz rcv1.test.bin.gz
+```
 
 ## RCV1 Benchmark
 > The benchmark task is the recognition of RCV1 documents belonging to the class CCAT. Program “prep_rcv1” reads the RCV1-V2 token files from directory “data/rcv1” and computes the TF/IDF features on the basis of the our training set. This programs produces the two files “rcv1.train.bin.gz” and “rcv1.test.bin.gz” containing our training and testing sets. This short program also generates files in SvmLight format when compiled with option -DPREP_SVMLIGHT. [(Bottou)](http://leon.bottou.org/projects/sgd)
 
-For these benchmarks, `svmimplicit` uses the same learning rate as `svmsgd`, and
-`svmaisgd` uses the same learning rate as `svmasgd`.
-
 | Benchmark | Features | Training examples | Testing examples |
 | :---- | :----: | :----: | :----: |
 | RCV1 | 47152 | 781265 | 23149 |
+
+For these benchmarks, `svmimplicit` uses the same learning rate procedure as `svmsgd`, and `svmaisgd` uses the same learning rate procedure as `svmasgd`.
 
 | Algorithm (hinge loss, λ=1e-4) | Training Time\* | Primal cost | Test Error |
 | :---- | ----: | ----: | ----: |
