@@ -5,8 +5,13 @@
 ################################################################################
 
 logistic <- function(x) {
-  # Return logit transform.
+  # Return logit inverse.
   return(1/(1+exp(-x)))
+}
+
+logit <- function(x) {
+  # Return logit.
+  return(log(x/(1-x)))
 }
 
 get.glm.model <- function(model="gaussian") {
@@ -29,28 +34,8 @@ get.glm.model <- function(model="gaussian") {
 }
 
 ################################################################################
-# Matrix generation
+# Observation matrix generation
 ################################################################################
-
-random.orthogonal <- function(p) {
-  # Get an orthogonal matrix.
-  B <- matrix(runif(p^2), nrow=p)
-  qr.Q(qr(B))
-}
-
-random.matrix <- function(lambdas=seq(0.01, 1, length.out=100)) {
-  # Generate a random matrix with the desired eigenvalues.
-  #
-  # Args:
-  #   lambdas: vector of eigenvalues
-  #
-  # Returns:
-  #   A p-by-p matrix with eigenvalues lambda.
-  p <- length(lambdas)
-  Q <- random.orthogonal(p)
-  A <- Q %*% diag(lambdas) %*% t(Q)
-  return(A)
-}
 
 generate.X.A <- function(n, p, lambdas=seq(0.01, 1, length.out=p)) {
   # Generate observations from Normal(0, A).
@@ -218,6 +203,92 @@ plot.risk <- function(data, est) {
   )
 }
 
+run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL) {
+  # Run AI-SGD for a set of parameters and any additionally selected methods,
+  # and plot error over training data size. The set of parameters affect only
+  # AI=SGD's learning rate.
+  # TODO: Generalize this function beyond Normal(0, A) data.
+  #
+  # Args:
+  #   model: the specified GLM
+  #   pars: A npars x 2 matrix, where each row is a set of parameters to run
+  #         AI-SGD on
+  #   n: number of observations
+  #   p: number of parameters
+  #   add.methods: vector of additional methods to benchmark. Options are
+  #            "SGD", "I-SGD", and "Batch".
+  #
+  # Returns:
+  #   A ggplot object, plotting error over training data size for each
+  #   optimization routine.
+  set.seed(42)
+  X.list <- generate.X.A(n, p)
+  d <- generate.data(X.list,
+                     glm.model=get.glm.model(model),
+                     theta=2 * exp(-seq(1, p)))
+
+  # Construct functions for learning rate.
+  lr <- function(n, par) {
+    # Ruppert's learning rate.
+    # Note:
+    # alpha / (alpha + n) = 1 / (1 + lambda0*n), where lambda0 = 1/alpha
+    D <- par[1]
+    alpha <- par[2]
+    D*n^alpha
+  }
+
+  # Optimize!
+  theta <- list()
+  # Run AI-SGD for each set of parameters.
+  pars.len <- ifelse(is.null(nrow(pars)), 1, nrow(pars)) # if pars is a vector
+  for (i in 1:pars.len) {
+    print("Running averaged implicit SGD..")
+    # Use parameters from the ith row, or pars itself if pars is a single set of
+    # parameters.
+    if (pars.len == 1) {
+      par <- pars
+    } else {
+      par <- pars[i, ]
+    }
+    theta[[i]] <- sgd(d, sgd.method="implicit", averaged=T,
+                          lr=lr, par=par)
+  }
+  names(theta) <- sprintf("AI-SGD, par #%i", 1:pars.len)
+  # Run additionally specified methods.
+  if ("SGD" %in% add.methods) {
+    print("Running explicit SGD..")
+    lr.explicit <- function(n, p) {
+      gamma0 <- 1 / (sum(seq(0.01, 1, length.out=p)))
+      alpha <- 1/0.01 # 1/minimal eigenvalue of Fisher information
+      alpha/(alpha/gamma0 + n)
+    }
+    theta$SGD <- sgd(d, sgd.method="explicit",
+                     lr=lr.explicit)
+  }
+  if ("I-SGD" %in% add.methods) {
+    print("Running implicit SGD..")
+    lr.implicit <- function(n) {
+      alpha <- 1/0.01 # 1/minimal eigenvalue of Fisher information
+      alpha/(alpha + n)
+    }
+    theta$`I-SGD` <- sgd(d, sgd.method="implicit",
+                      lr=lr.implicit)
+  }
+  if ("Batch" %in% add.methods) {
+    print("Running batch method..")
+    theta$Batch <- batch(d, sequence=round(10^seq(
+      log(p + 10, base=10),
+      log(n, base=10), length.out=100))
+      ) # the sequence is equally spaced points on the log scale
+  }
+
+  # Plot and save image.
+  #png(sprintf("img/exp_%s_n%ip%i.png", model, log(n, base=10), log(p,
+  #  base=10)), width=1280, height=720)
+  plot.risk(d, theta)
+  #dev.off()
+}
+
 benchmark <- function(n, p, rho,
                       methods=c("glmnet (naive)", "glmnet (cov)",
                                 "sgd (implicit)", "sgd (averaged implicit)"),
@@ -348,3 +419,26 @@ fracSec <- function() {
   now <- as.vector(as.POSIXct(Sys.time())) / 1000
   as.integer(abs(now - trunc(now)) * 10^8)
 }
+interval.map <- function(a, b, c, d, x) {
+  # Scale values in [a,b] to [c,d].
+  return(c + (d-c)/(b-a) * (x-a))
+}
+random.orthogonal <- function(p) {
+  # Get an orthogonal matrix.
+  B <- matrix(runif(p^2), nrow=p)
+  qr.Q(qr(B))
+}
+random.matrix <- function(lambdas=seq(0.01, 1, length.out=100)) {
+  # Generate a random matrix with the desired eigenvalues.
+  #
+  # Args:
+  #   lambdas: vector of eigenvalues
+  #
+  # Returns:
+  #   A p-by-p matrix with eigenvalues lambda.
+  p <- length(lambdas)
+  Q <- random.orthogonal(p)
+  A <- Q %*% diag(lambdas) %*% t(Q)
+  return(A)
+}
+
