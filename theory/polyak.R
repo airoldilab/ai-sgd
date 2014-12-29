@@ -1,15 +1,19 @@
 ## Notes from the Polyak paper.
+rm(list=ls())
+## Problem definition: Linear case.
 p = 3
-# Define some matrices.
-lambdaA.min <- 0.2
+lambdaA.min <- 0.1
 lambdaA.max <- 3
+gamma.rate <- 0.4
 A.eig = seq(lambdaA.min, lambdaA.max, length.out=p)
 U = qr.Q(qr(matrix(runif(p^2), nrow=p)))
 A = U %*% diag(A.eig) %*% t(U)
 A.inv = solve(A)
 I = diag(p)
+M0 = matrix(0, nrow=p, ncol=p)
 
 solve.lyapunov <- function() {
+  # Solve A^T V + V A = I.
   V = I
   converge = F
   B = solve(I + A)
@@ -22,22 +26,51 @@ solve.lyapunov <- function() {
   return(V)
 }
 
-gamma.j <- function(j, gamma=2/lambdaA.min, alpha=0.8) {
-  # return(gamma)
-  1 * (1+j)^(-0.4)
+gamma.j <- function(j, exponent=0.5, gamma_0=1) {
+  # Learning rate
+  gamma_0 * j^(-exponent)
 }
 
 Gamma.sum <- function(j, t) {
+  # Compute the sum of rates.
   sum(gamma.j(j:t))
+}
+
+bound.implicit.gamma <- function(exponent, N=1e6, lam=2.5) {
+  g = gamma.j(1:N, exponent=exponent)
+  x = 1 + lam * g
+  K = -1e-4 + (1/lam) * min(log(x) / g)
+  bound = exp(-K * lam * g)
+  print("Bound - actual")
+  print(head(bound), 10)
+  print(head(1/x), 10)
+  print((1/lam) * head(log(x)/g))
+  print("Learning rates...")
+  print(head(g))
+  print(sprintf("Lambda = %.3f, K = %.3f, 1/L=%.3f Limit min=%.3f", 
+                lam, K, 1/lam, tail(log(x) / g, 1)))
+  plot(1/x, type="l", col="green")
+  lines(bound, col="red")
+  print(sprintf("Total correct bounds = %.3f%%", 100 * sum(bound > 1/x) / N))
+  
+  ## Now check the bound.
+  prods = cumprod(1/x)
+  bounds = exp(-K * lam * cumsum(g))
+  plot(prods, bounds, type="l", lty=3)
+  lines(prods, prods, col="red")
+  print("Tail of partial products - bounds")
+  print(tail(prods))
+  print(tail(bounds))
 }
 
 Xjt <- function(j, t) {
   # Computes X_j^t defined in (A1)
+  # Xj(t+1) = (I - g_t A) Xjt
+  # thus, Xj(t+1) = (I-gt A) * (I-g(t-1) A) * ... (I - g(j) A)
   stopifnot(t >= j)
   if(t==j) return(I)
   return( (I - gamma.j(t-1) * A) %*% Xjt(j, t-1))
 }
-
 sum.Xjt <- function(j, upto) {
   # Computes sum_{i=j}^{i=upto} Xj^i
   S = matrix(0, nrow=p, ncol=p)
@@ -50,30 +83,60 @@ sum.Xjt <- function(j, upto) {
   return(S)
 }
 
-
-Xjt.bar <- function(j, t) {
+Yjt <- function(j, t) {
+  # Computes the implicit counterpart of Xjt.
+  # Yj(t+1) = (I + g_t A)^-1 Yjt
   stopifnot(t >= j)
-  return(gamma.j(j) * sum.Xjt(j, t))
+  if(t==j) return(I)
+  return(solve(I + gamma.j(t-1) * A) %*% Yjt(j, t-1))
 }
 
-average.Xjt.bar <- function(tmax) {
-  S = 0
-  conv <- c()
-  for(j in 1:tmax) {
-    S <- S + Xjt.bar(j, tmax)
-    conv <- c(conv, norm(S/j - A.inv, type="F"))
-    if(j %% 50 == 0)
-      plot(log(conv), type="l", main="Convergence of log(||Xjt.bar - A^-1||)")
+sum.Yjt <- function(j, upto) {
+  # Computes sum_{i=j}^{i=upto} Yj^i
+  S = M0
+  Y = I
+  if(upto < j) return(S)
+  for(i in j:upto) {
+    S <- S + Y
+    Y <- solve(I + gamma.j(i) * A) %*% Y
   }
-  print(tail(conv))
-  return(S/tmax)
+  return(S)
 }
 
-phi.jt <- function(j, t) {
-  solve(A) - Xjt.bar(j,t)
+## Averaged versions.
+Xjt.bar <- function(j, t) {
+  if(t < j + 1) return(matrix(0, nrow=p, ncol=p))
+  return(gamma.j(j) * sum.Xjt(j, t-1))
+}
+Yjt.bar <- function(j, t) {
+  if(t < j + 1) return(matrix(0, nrow=p, ncol=p))
+  return(gamma.j(j) * sum.Yjt(j, t-1))
 }
 
-check.Xjt.frobenius <- function(j=5, tmax=500) {
+###    Check theoretical claims.
+## Check that sum_j bar{Xjt} - A^-1 = o(t)
+# i.e., that the Xjt.bar, Yjt.bar are getting close to A^-1
+check.bar.convergence <- function(tmax, is.X=T, by=50, plot.last=100) {
+  S = M0
+  j = 50
+  norms.vals <- c()
+  plot.points = seq(j, tmax, by=40)
+  for(t in j:tmax) {
+    if(is.X) {
+      S = (A.inv - Xjt.bar(j, t))
+    } else {
+      S = (A.inv - Yjt.bar(j, t))
+    }
+    norms.vals <- c(norms.vals, norm(S/t, type="F"))
+    if(t %in% plot.points) {
+      plot(norms.vals, type="l", main=sprintf("t=%d. Check claim on averaged %sjt. Last=%.4f", 
+                                                         t, ifelse(is.X, "X", "Y"), tail(norms.vals, 1)))
+    }
+  }
+  print(tail(norms.vals))
+}
+
+check.frobenius.norm <- function(j=5, tmax=500) {
   tvalues = seq(10, tmax, by=20)
   real.norm <- c()
   upper.bound <- c()
@@ -84,7 +147,7 @@ check.Xjt.frobenius <- function(j=5, tmax=500) {
   lamV.max = max(eigen(V)$values)
   lambdaA = eigen(A)$values
   for(t in tvalues) {
-    X = Xjt(j, t)
+    X = Yjt(j, t)
     real.norm <- c(real.norm, norm(X, type="F"))
     upper.bound <- c(upper.bound, sqrt(sum(exp(-2 *lambdaA * Gamma.sum(j, t-1)))))
     polyak.bound <- c(polyak.bound, sqrt(lamV.max / lamV.min) * exp((-0.5/lamV.max) * Gamma.sum(j, t-1)))
@@ -99,19 +162,19 @@ check.Xjt.frobenius <- function(j=5, tmax=500) {
   print(all(upper.bound >= real.norm))
 }
 
-check.Xjt.convergence <- function(tmax) {
-  S = matrix(0, nrow=p, ncol=p)
-  svector = c()
-  for(t in 1:tmax) {
-    S = matrix(0, nrow=p, ncol=p)
-    for(j in 0:t) {
-      S <- S + phi.jt(j, t)
-    }
-    S.avg = S/t
-    svector = c(svector, mean(S.avg^2))
-    if(t %% 20 == 0) {
-      plot(svector, type="l", main=sprintf("t = %d, Current min=%.4f", t, min(svector)))
-    }
-  }
-  print(tail(svector))
+partial.products <- function(t, alpha, beta) {
+  # compute 
+  # 1 / (1 + a * 1^-b) * (1+ a 2^-b)...(1+a t^-b)
+  # Is this equal to exp(-t + G(t))  where $
+  gamma = seq(1, t)^(-beta)
+  frac1 = 1 / (1 + gamma * alpha)
+  frac2 = gamma * alpha * frac1
+ 
+  P = cumprod(frac1)
+  G = cumsum(frac2)
+  
+  
+  plot(log(P), type="l")
+  lines(-G, type="l", col="red")
+
 }
