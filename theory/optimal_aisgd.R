@@ -43,7 +43,7 @@ evalPar <- function(par, data, idx=1:min(1e3, nrow(data$X)), lr, param=T) {
     par[2] <- interval.map(0, 1, -1, -1/2, logistic(par[2]))
   }
   # Run SGD.
-  theta.sgd <- sgd(data, sgd.method="implicit", averaged=T, lr=lr, par=par)
+  theta.sgd <- sgd(data, sgd.method="AI-SGD", lr=lr, par=par)
   theta.sgd <- theta.sgd[, ncol(theta.sgd)]
   # Use mse of h(X*theta) from y.
   cost <- norm(data$Y - data$model$h(data$X %*% theta.sgd), type="2")

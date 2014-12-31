@@ -28,7 +28,7 @@ model = "gaussian"
 
 X.list <- generate.X.A(n=nsamples, p=ncovs, lambdas=seq(1, 1, length.out=ncovs))
 lambda0 = min(eigen(X.list$A)$values)
-d <- generate.data(X.list, theta= rep(1, ncovs), 
+d <- generate.data(X.list, theta= rep(1, ncovs),
                    glm.model = get.glm.model(model))
 
 # Construct functions for learning rate according to Xu.
@@ -66,30 +66,26 @@ plot(mse(theta.batch), main="MSE normal", type="l", xlab="iteration (10^..)")
 x.labels = sapply(subset.idx, function(i) sprintf("%.1f", log(i, base = 10)))
 axis(1, at=1:length(subset.idx), labels=x.labels)
 print(summary(mse(theta.batch)))
-# 
+#
 if(TRUE) {
   print("Running SGD.")
-  theta.sgd <- sgd(d, sgd.method="explicit", lr=lr.explicit)[, subset.idx]
+  theta.sgd <- sgd(d, sgd.method="SGD", lr=lr.explicit)[, subset.idx]
   lines(mse(theta.sgd), col="red")
   print(summary(mse(theta.sgd)))
-  
+
   print("Running ASGD.")
-  theta.asgd <- sgd(d, sgd.method="explicit", averaged=T, lr=lr.avg)[, subset.idx]
+  theta.asgd <- sgd(d, sgd.method="ASGD", lr=lr.avg)[, subset.idx]
   lines(mse(theta.asgd), col="pink")
   print(summary(mse(theta.asgd)))
-  
+
   print("Running ISGD.")
-  theta.isgd <- sgd(d, sgd.method="implicit", lr=lr.implicit)[, subset.idx]
+  theta.isgd <- sgd(d, sgd.method="ISGD", lr=lr.implicit)[, subset.idx]
   lines(mse(theta.isgd), col="blue")
   print(summary(mse(theta.isgd)))
 }
 
 ## Experiment for best AISGD
-print("Running AISGD.")
-theta.aisgd <- sgd(d, sgd.method="implicit", averaged=T, lr=lr.implicit.avg)[, subset.idx]
+print("Running AI-SGD.")
+theta.aisgd <- sgd(d, sgd.method="AI-SGD", lr=lr.implicit.avg)[, subset.idx]
 lines(mse(theta.aisgd), col="cyan")
 print(summary(mse(theta.aisgd)))
-
-
-
-

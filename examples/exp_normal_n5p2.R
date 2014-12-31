@@ -99,11 +99,11 @@ subset.idx <- c(seq(100, 900, by=100), seq(1000, 1e5, by=1000))
 # Set method based on job.id.
 job.id <- as.integer(commandArgs(trailingOnly=TRUE))
 if (job.id == 1) {
-  theta <- sgd(d, sgd.method="explicit", lr=lr.explicit)[, subset.idx]
+  theta <- sgd(d, sgd.method="SGD", lr=lr.explicit)[, subset.idx]
 } else if (job.id == 2) {
-  theta <- sgd(d, sgd.method="implicit", lr=lr.implicit)[, subset.idx]
+  theta <- sgd(d, sgd.method="ISGD", lr=lr.implicit)[, subset.idx]
 } else if (job.id == 3) {
-  theta <- sgd(d, sgd.method="implicit", averaged=T, lr=lr.implicit)[, subset.idx]
+  theta <- sgd(d, sgd.method="AI-SGD", lr=lr.implicit)[, subset.idx]
 } else if (job.id == 4) {
   theta <- batch(d, sequence=subset.idx, slope=F)
 }

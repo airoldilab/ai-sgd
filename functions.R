@@ -203,10 +203,10 @@ plot.risk <- function(data, est) {
   )
 }
 
-run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL) {
+run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F) {
   # Run AI-SGD for a set of parameters and any additionally selected methods,
   # and plot error over training data size. The set of parameters affect only
-  # AI=SGD's learning rate.
+  # AI-SGD's learning rate.
   # TODO: Generalize this function beyond Normal(0, A) data.
   #
   # Args:
@@ -216,7 +216,8 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL) {
   #   n: number of observations
   #   p: number of parameters
   #   add.methods: vector of additional methods to benchmark. Options are
-  #            "SGD", "I-SGD", and "Batch".
+  #            "SGD", "ISGD", and "Batch".
+  #   plot.save: boolean specifying whether to save plot to disk or output it
   #
   # Returns:
   #   A ggplot object, plotting error over training data size for each
@@ -250,48 +251,49 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL) {
     } else {
       par <- pars[i, ]
     }
-    theta[[i]] <- sgd(d, sgd.method="implicit", averaged=T,
-                          lr=lr, par=par)
+    theta[[i]] <- sgd(d, sgd.method="AI-SGD", lr=lr, par=par)
   }
   names(theta) <- sprintf("AI-SGD, par #%i", 1:pars.len)
   # Run additionally specified methods.
   if ("SGD" %in% add.methods) {
-    print("Running explicit SGD..")
+    print("Running SGD..")
     lr.explicit <- function(n, p) {
       gamma0 <- 1 / (sum(seq(0.01, 1, length.out=p)))
       alpha <- 1/0.01 # 1/minimal eigenvalue of Fisher information
       alpha/(alpha/gamma0 + n)
     }
-    theta$SGD <- sgd(d, sgd.method="explicit",
-                     lr=lr.explicit)
+    theta$SGD <- sgd(d, sgd.method="SGD", lr=lr.explicit)
   }
-  if ("I-SGD" %in% add.methods) {
-    print("Running implicit SGD..")
+  if ("ISGD" %in% add.methods) {
+    print("Running ISGD..")
     lr.implicit <- function(n) {
       alpha <- 1/0.01 # 1/minimal eigenvalue of Fisher information
       alpha/(alpha + n)
     }
-    theta$`I-SGD` <- sgd(d, sgd.method="implicit",
-                      lr=lr.implicit)
+    theta$ISGD <- sgd(d, sgd.method="ISGD", lr=lr.implicit)
   }
   if ("Batch" %in% add.methods) {
-    print("Running batch method..")
+    print("Running Batch..")
     theta$Batch <- batch(d, sequence=round(10^seq(
       log(p + 10, base=10),
       log(n, base=10), length.out=100))
       ) # the sequence is equally spaced points on the log scale
   }
 
-  # Plot and save image.
-  #png(sprintf("img/exp_%s_n%ip%i.png", model, log(n, base=10), log(p,
-  #  base=10)), width=1280, height=720)
-  plot.risk(d, theta)
-  #dev.off()
+  if (plot.save == TRUE) {
+    # Plot and save image.
+    png(sprintf("img/exp_%s_n%ip%i.png", model, log(n, base=10), log(p,
+      base=10)), width=1280, height=720)
+    plot.risk(d, theta)
+    dev.off()
+  } else {
+    return(plot.risk(d, theta))
+  }
 }
 
 benchmark <- function(n, p, rho,
                       methods=c("glmnet (naive)", "glmnet (cov)",
-                                "sgd (implicit)", "sgd (averaged implicit)"),
+                                "ISGD", "AI-SGD"),
                       nreps=3) {
   # Benchmark stochastic gradient methods along with glmnet.
   # TODO: Generalize this function beyond correlated Normal data.
@@ -301,8 +303,7 @@ benchmark <- function(n, p, rho,
   #   p: number of parameters
   #   rho: correlation
   #   methods: vector of methods to benchmark. Options are "glmnet (naive)",
-  #            "glmnet (cov)", "sgd (explicit)", "sgd (averaged explicit)", "sgd
-  #            (implicit)", "sgd (averaged implicit)".
+  #            "glmnet (cov)", and all methods documented in sgd()
   #   nreps: number of replications
   #
   # Returns:
@@ -377,24 +378,14 @@ benchmark <- function(n, p, rho,
            type.gaussian="covariance")}
         )[1]
         mse.j <- median(apply(fit$beta, 2, function(est) dist(est, theta)))
-      } else if (methods[j] == "sgd (explicit)") {
+      } else if (methods[j] %in% c("SGD", "ASGD", "LS-SGD")) {
         time.j <- system.time(
-          {fit=sgd(data, sgd.method="explicit", lr=lr.explicit, rho=rho)}
+          {fit=sgd(data, sgd.method=methods[j], lr=lr.explicit, rho=rho)}
         )[1]
         mse.j <- dist(fit[, ncol(fit)], theta)
-      } else if (methods[j] == "sgd (averaged explicit)") {
+      } else if (methods[j] %in% c("ISGD", "AI-SGD", "LS-ISGD")) {
         time.j <- system.time(
-          {fit=sgd(data, sgd.method="explicit", lr=lr.explicit, rho=rho)}
-        )[1]
-        mse.j <- dist(fit[, ncol(fit)], theta)
-      } else if (methods[j] == "sgd (implicit)") {
-        time.j <- system.time(
-          {fit=sgd(data, sgd.method="implicit", lr=lr.implicit)}
-        )[1]
-        mse.j <- dist(fit[, ncol(fit)], theta)
-      } else if (methods[j] == "sgd (averaged implicit)") {
-        time.j <- system.time(
-          {fit=sgd(data, sgd.method="implicit", lr=lr.implicit)}
+          {fit=sgd(data, sgd.method=methods[j], lr=lr.implicit)}
         )[1]
         mse.j <- dist(fit[, ncol(fit)], theta)
       }
@@ -441,4 +432,3 @@ random.matrix <- function(lambdas=seq(0.01, 1, length.out=100)) {
   A <- Q %*% diag(lambdas) %*% t(Q)
   return(A)
 }
-
