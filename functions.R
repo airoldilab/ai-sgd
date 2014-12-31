@@ -216,7 +216,7 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F) {
   #   n: number of observations
   #   p: number of parameters
   #   add.methods: vector of additional methods to benchmark. Options are
-  #            "SGD", "ISGD", and "Batch".
+  #                documented in sgd()
   #   plot.save: boolean specifying whether to save plot to disk or output it
   #
   # Returns:
@@ -243,7 +243,7 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F) {
   # Run AI-SGD for each set of parameters.
   pars.len <- ifelse(is.null(nrow(pars)), 1, nrow(pars)) # if pars is a vector
   for (i in 1:pars.len) {
-    print("Running averaged implicit SGD..")
+    print("Running AI-SGD..")
     # Use parameters from the ith row, or pars itself if pars is a single set of
     # parameters.
     if (pars.len == 1) {
@@ -255,29 +255,29 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F) {
   }
   names(theta) <- sprintf("AI-SGD, par #%i", 1:pars.len)
   # Run additionally specified methods.
-  if ("SGD" %in% add.methods) {
-    print("Running SGD..")
-    lr.explicit <- function(n, p) {
-      gamma0 <- 1 / (sum(seq(0.01, 1, length.out=p)))
-      alpha <- 1/0.01 # 1/minimal eigenvalue of Fisher information
-      alpha/(alpha/gamma0 + n)
-    }
-    theta$SGD <- sgd(d, sgd.method="SGD", lr=lr.explicit)
+  lr.explicit <- function(n, p) {
+    gamma0 <- 1 / (sum(seq(0.01, 1, length.out=p)))
+    alpha <- 1/0.01 # 1/minimal eigenvalue of Fisher information
+    alpha/(alpha/gamma0 + n)
   }
-  if ("ISGD" %in% add.methods) {
-    print("Running ISGD..")
-    lr.implicit <- function(n) {
-      alpha <- 1/0.01 # 1/minimal eigenvalue of Fisher information
-      alpha/(alpha + n)
-    }
-    theta$ISGD <- sgd(d, sgd.method="ISGD", lr=lr.implicit)
+  lr.implicit <- function(n) {
+    alpha <- 1/0.01 # 1/minimal eigenvalue of Fisher information
+    alpha/(alpha + n)
   }
-  if ("Batch" %in% add.methods) {
-    print("Running Batch..")
-    theta$Batch <- batch(d, sequence=round(10^seq(
-      log(p + 10, base=10),
-      log(n, base=10), length.out=100))
-      ) # the sequence is equally spaced points on the log scale
+  for (i in add.methods) {
+    if (i %in% c("SGD", "ASGD", "LS-SGD")) {
+      print(sprintf("Running %s..", i))
+      theta[[i]] <- sgd(d, sgd.method=i, lr=lr.explicit)
+    } else if (i %in% c("ISGD", "AI-SGD", "LS-ISGD")) {
+      print(sprintf("Running %s..", i))
+      theta[[i]] <- sgd(d, sgd.method=i, lr=lr.implicit)
+    } else if (i == "Batch") {
+      print(sprintf("Running %s..", i))
+      theta[[i]] <- batch(d, sequence=round(10^seq(
+        log(p + 10, base=10),
+        log(n, base=10), length.out=100))
+        ) # the sequence is equally spaced points on the log scale
+    }
   }
 
   if (plot.save == TRUE) {
