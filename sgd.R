@@ -35,7 +35,7 @@ sgd <- function(data, sgd.method, lr, npass=1, ...) {
   # Main iteration: i = #iteration
   # Assumes: y, ai,   Updates: theta.new
   for (i in 1:(n*npass)) {
-    idx <- ifelse(i == n, n, i %% n) # sample index of data
+    idx <- ifelse(i %% n == 0, n, i %% n) # sample index of data
     xi <- data$X[idx, ]
     yi <- data$Y[idx]
     theta.old <- theta.sgd[, i]
