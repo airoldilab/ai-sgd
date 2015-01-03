@@ -25,6 +25,7 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
   n <- nrow(data$X)
   p <- ncol(data$X)
   niters <- n*npass
+  glm.model <- data$model
   # Initialize parameter matrix for the stochastic gradient descent (p x n*npass+1).
   # Will return this matrix.
   theta.sgd <- matrix(0, nrow=p, ncol=niters+1)
@@ -35,10 +36,18 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
   # Main iteration: i = #iteration
   # TODO: Test to see if the regularization actually works.
   for (i in 1:niters) {
+    # Index.
+    idx <- ifelse(i %% n == 0, n, i %% n) # sample index of data
+    xi <- data$X[idx, ]
+    yi <- data$Y[idx]
+    theta.old <- theta.sgd[, i]
+    # Compute learning rate.
+    ai <- lr(i, ...)
+
     if (sgd.method %in% c("SGD", "ASGD", "LS-SGD")) {
-      theta.new <- sgd.update(i, data, theta.sgd, lr, lambda, ...)
+      theta.new <- sgd.update(theta.old, xi, yi, ai, lambda, glm.model)
     } else if (sgd.method %in% c("ISGD", "AI-SGD", "LS-ISGD")) {
-      theta.new <- isgd.update(i, data, theta.sgd, lr, lambda, ...)
+      theta.new <- isgd.update(theta.old, xi, yi, ai, lambda, glm.model)
     }
     theta.sgd[, i+1] <- theta.new
   }
@@ -57,16 +66,7 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
 }
 
 # Define update functions.
-sgd.update <- function(i, data, theta.sgd, lr, lambda, ...) {
-  n <- nrow(data$X)
-  glm.model <- data$model
-  # Index.
-  idx <- ifelse(i %% n == 0, n, i %% n) # sample index of data
-  xi <- data$X[idx, ]
-  yi <- data$Y[idx]
-  theta.old <- theta.sgd[, i]
-  # Calculate learning rate.
-  ai <- lr(i, ...)
+sgd.update <- function(theta.old, xi, yi, ai, lambda, glm.model) {
   # Shorthand for derivative of log-likelihood for GLMs with CV.
   score <- function(theta) {
     #(yi - glm.model$h(sum(xi * theta))) * xi
@@ -75,20 +75,11 @@ sgd.update <- function(i, data, theta.sgd, lr, lambda, ...) {
   theta.new <- theta.old + ai * score(theta.old)
   return(theta.new)
 }
-isgd.update <- function(i, data, theta.sgd, lr, lambda, ...) {
-  n <- nrow(data$X)
-  glm.model <- data$model
-  # Index.
-  idx <- ifelse(i %% n == 0, n, i %% n) # sample index of data
-  xi <- data$X[idx, ]
-  yi <- data$Y[idx]
-  theta.old <- theta.sgd[, i]
+isgd.update <- function(theta.old, xi, yi, ai, lambda, glm.model) {
   # Make computation easier.
   xi.norm <- sum(xi^2)
   lpred <- sum(xi * theta.old)
   y.pred <- glm.model$h(lpred)  # link function of GLM
-  # Calculate learning rate.
-  ai <- lr(i, ...)
   # 1. Define the search interval.
   #ri <- ai * (yi - y.pred)
   ri <- ai * ((yi - y.pred) + lambda*sqrt(sum(theta.old^2)))
@@ -135,6 +126,9 @@ ls.post <- function(theta.sgd, data) {
   p <- ncol(data$X)
   ncol.theta <- ncol(theta.sgd) # n*npass+1
   # TODO: Generating y can be faster by doing matrix multiplication instead.
+  # TODO: Benchmark this compared to forming y within the main SGD loop. The
+  # latter method does not have to load in the DATA object into a function,
+  # which is expensive.
   # Also the indices are probably off here: y[, 1] should not be all 0 (?).
   y <- matrix(0, nrow=p, ncol=ncol.theta)
   for (i in 1:(ncol.theta-1)) {
