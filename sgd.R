@@ -1,8 +1,8 @@
 # An implementation of stochastic gradient methods for GLMs.
 
 sgd <- function(data, sgd.method, lr, npass=1, ...) {
-  # Find the optimal parameter values using a stochastic gradient method for a
-  # generalized linear model.
+  # Find the optimal parameters using a stochastic gradient method for
+  # generalized linear models.
   #
   # Args:
   #   data: DATA object created through sample.data(..) (see functions.R)
@@ -46,11 +46,7 @@ sgd <- function(data, sgd.method, lr, npass=1, ...) {
     y.pred <- glm.model$h(lpred)  # link function of GLM
 
     # Calculate learning rate.
-    if (sgd.method %in% c("SGD", "ASGD", "LS-SGD")) {
-      ai <- lr(i, p, ...)
-    } else if (sgd.method %in% c("ISGD", "AI-SGD", "LS-ISGD")) {
-      ai <- lr(i, ...)
-    }
+    ai <- lr(i, ...)
 
     # Make the update.
     # This is broken since doesn't cover i==1.

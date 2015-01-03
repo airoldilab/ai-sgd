@@ -203,7 +203,7 @@ plot.risk <- function(data, est) {
   )
 }
 
-run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F) {
+run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F, ...) {
   # Run AI-SGD for a set of parameters and any additionally selected methods,
   # and plot error over training data size. The set of parameters affect only
   # AI-SGD's learning rate.
@@ -251,7 +251,7 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F) {
     } else {
       par <- pars[i, ]
     }
-    theta[[i]] <- sgd(d, sgd.method="AI-SGD", lr=lr, par=par)
+    theta[[i]] <- sgd(d, sgd.method="AI-SGD", lr=lr, par=par, ...)
   }
   names(theta) <- sprintf("AI-SGD, par #%i", 1:pars.len)
   # Run additionally specified methods.
@@ -267,16 +267,16 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F) {
   for (i in add.methods) {
     if (i %in% c("SGD", "ASGD", "LS-SGD")) {
       print(sprintf("Running %s..", i))
-      theta[[i]] <- sgd(d, sgd.method=i, lr=lr.explicit)
+      theta[[i]] <- sgd(d, sgd.method=i, lr=lr.explicit, p=p, ...)
     } else if (i %in% c("ISGD", "AI-SGD", "LS-ISGD")) {
       print(sprintf("Running %s..", i))
-      theta[[i]] <- sgd(d, sgd.method=i, lr=lr.implicit)
+      theta[[i]] <- sgd(d, sgd.method=i, lr=lr.implicit, ...)
     } else if (i == "Batch") {
       print(sprintf("Running %s..", i))
       theta[[i]] <- batch(d, sequence=round(10^seq(
         log(p + 10, base=10),
-        log(n, base=10), length.out=100))
-        ) # the sequence is equally spaced points on the log scale
+        log(n, base=10), length.out=100)),
+        ...) # the sequence is equally spaced points on the log scale
     }
   }
 
@@ -380,7 +380,7 @@ benchmark <- function(n, p, rho,
         mse.j <- median(apply(fit$beta, 2, function(est) dist(est, theta)))
       } else if (methods[j] %in% c("SGD", "ASGD", "LS-SGD")) {
         time.j <- system.time(
-          {fit=sgd(data, sgd.method=methods[j], lr=lr.explicit, rho=rho)}
+          {fit=sgd(data, sgd.method=methods[j], lr=lr.explicit, p=p, rho=rho)}
         )[1]
         mse.j <- dist(fit[, ncol(fit)], theta)
       } else if (methods[j] %in% c("ISGD", "AI-SGD", "LS-ISGD")) {

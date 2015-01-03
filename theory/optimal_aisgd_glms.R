@@ -32,12 +32,12 @@ d <- generate.data(X.list, theta= rep(1, ncovs),
                    glm.model = get.glm.model(model))
 
 # Construct functions for learning rate according to Xu.
-lr.explicit <- function(n, p) {
+lr.explicit <- function(n) {
   gamma0 = 1/ sum(diag(X.list$A))
   gamma0 / (1 + lambda0 * gamma0 * n)
 }
 
-lr.avg <- function(n, p) {
+lr.avg <- function(n) {
   gamma0 = 1/ sum(diag(X.list$A))
   gamma0 * (1 + lambda0 * gamma0 * n)^(-2/3)
 }
@@ -46,7 +46,7 @@ lr.implicit <- function(n) {
   1 / (1 + lambda0 * n)
 }
 
-lr.implicit.avg <- function(n, p) {
+lr.implicit.avg <- function(n) {
   (0 + lambda0 * n)^(-0.8)
 }
 
