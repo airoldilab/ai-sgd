@@ -7,7 +7,7 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
   # Args:
   #   data: DATA object created through sample.data(..) (see functions.R)
   #   sgd.method: a string which is one of the following: "SGD", "ASGD",
-  #               "LS-SGD", "ISGD", "AI-SGD", "LS-ISGD"
+  #               "LS-SGD", "ISGD", "AI-SGD", "LS-ISGD", "SVRG"
   #   lr: function which computes learning rate with input the iterate index
   #   npass: number of passes over data
   #   lambda: L2 regularization parameter for cross validation. Defaults to
@@ -19,35 +19,37 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
   # Check input.
   stopifnot(
     all(is.element(c("X", "Y", "model"), names(data))),
-    sgd.method %in% c("SGD", "ASGD", "LS-SGD", "ISGD", "AI-SGD", "LS-ISGD")
+    sgd.method %in% c("SGD", "ASGD", "LS-SGD", "ISGD", "AI-SGD", "LS-ISGD",
+      "SVRG")
   )
   # Initialize constants.
   n <- nrow(data$X)
   p <- ncol(data$X)
+  niters <- n*npass
   # Initialize parameter matrix for the stochastic gradient descent (p x n*npass+1).
   # Will return this matrix.
-  theta.sgd <- matrix(0, nrow=p, ncol=n*npass+1)
+  theta.sgd <- matrix(0, nrow=p, ncol=niters+1)
   theta.new <- NULL
   ai <- NULL
-  # Initialize y matrix if method uses least squares estimate (p x n*npass+1).
-  y <- NULL
-  if (sgd.method %in% c("LS-SGD", "LS-ISGD")) {
-    y <- matrix(0, nrow=p, ncol=n*npass+1)
+  # Initialize frequency and change niters if method is SVRG, following notation
+  # in Johnson and Zhang (2013).
+  m <- NULL
+  if (sgd.method == "SVRG") {
+    stopifnot(npass %% 2 == 0)
+    m <- 2*n
+    niters <- npass/2 # do this many 2-passes over the data
   }
 
   # Run the stochastic gradient method.
   # Main iteration: i = #iteration
+  # TODO: Test to see if the regularization actually works.
   for (i in 1:niters) {
-    # Update y matrix if method uses least squares estimate.
-    if (sgd.method %in% c("LS-SGD", "LS-ISGD")) {
-      y[, i] <- ls.update(i, data, theta.sgd)
-    }
-    # Update parameters.
-    # TODO: Test to see if the regularization actually works.
     if (sgd.method %in% c("SGD", "ASGD", "LS-SGD")) {
       theta.new <- sgd.update(i, data, theta.sgd, lr, lambda, ...)
     } else if (sgd.method %in% c("ISGD", "AI-SGD", "LS-ISGD")) {
       theta.new <- isgd.update(i, data, theta.sgd, lr, lambda, ...)
+    } else if (sgd.method == "SVRG") {
+      theta.new <- svrg.update(i, data, theta.sgd, lr, lambda, ...)
     }
     theta.sgd[, i+1] <- theta.new
   }
@@ -59,7 +61,7 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
   }
   if (sgd.method %in% c("LS-SGD", "LS-ISGD")) {
     # Run least squares fit over all estimates.
-    theta.sgd <- ls.post(theta.sgd, y)
+    theta.sgd <- ls.post(theta.sgd, data)
   }
 
   return(theta.sgd)
@@ -78,6 +80,7 @@ sgd.update <- function(i, data, theta.sgd, lr, lambda, ...) {
   ai <- lr(i, ...)
   # Shorthand for derivative of log-likelihood for GLMs with CV.
   score <- function(theta) {
+    #TODO
     #(yi - glm.model$h(sum(xi * theta))) * xi
     (yi - glm.model$h(sum(xi * theta))) * xi + lambda*sqrt(sum(theta^2))
   }
@@ -99,6 +102,7 @@ isgd.update <- function(i, data, theta.sgd, lr, lambda, ...) {
   # Calculate learning rate.
   ai <- lr(i, ...)
   # 1. Define the search interval.
+  #TODO
   #ri <- ai * (yi - y.pred)
   ri <- ai * ((yi - y.pred) + lambda*sqrt(sum(theta.old^2)))
   Bi <- c(0, ri)
@@ -107,6 +111,7 @@ isgd.update <- function(i, data, theta.sgd, lr, lambda, ...) {
   }
 
   implicit.fn <- function(u) {
+    #TODO
     #u - ai * (yi - glm.model$h(lpred + xi.norm * u))
     #u - ai * ((yi - glm.model$h(lpred + xi.norm * u)) + lambda*sqrt(sum(theta.old+u^2)))
     u - ai * ((yi - glm.model$h(lpred + xi.norm * u)) + lambda*sqrt(sum(u^2)))
@@ -120,6 +125,7 @@ isgd.update <- function(i, data, theta.sgd, lr, lambda, ...) {
     ksi.new <- Bi[1]
   }
   theta.new <- theta.old + ksi.new * xi
+  #TODO
   #theta.new <- theta.old + ksi.new
   return(theta.new)
 }
@@ -135,6 +141,7 @@ svrg.update <- function(i, data, theta.sgd, lr, lambda, ...) {
   ai <- lr(i, ...)
   # Shorthand for derivative of log-likelihood for GLMs with CV.
   score <- function(theta) {
+    #TODO
     #(yi - glm.model$h(sum(xi * theta))) * xi
     (yi - glm.model$h(sum(xi * theta))) * xi + lambda*sqrt(sum(theta^2))
   }
@@ -177,9 +184,21 @@ average.post <- function(theta.sgd) {
     cumsum(x)/(1:length(x))
   })))
 }
-ls.post <- function(theta.sgd, y) {
-  p <- nrow(theta.sgd) # p
+ls.post <- function(theta.sgd, data) {
+  # TODO: Generalize beyond Normal(0, A) data.
+  n <- nrow(data$X)
+  p <- ncol(data$X)
   ncol.theta <- ncol(theta.sgd) # n*npass+1
+  # TODO: Generating y can be faster by doing matrix multiplication instead.
+  # Also the indices are probably off here: y[, 1] should not be all 0 (?).
+  y <- matrix(0, nrow=p, ncol=ncol.theta)
+  for (i in 1:(ncol.theta-1)) {
+    idx <- ifelse(i %% n == 0, n, i %% n) # sample index of data
+    xi <- data$X[idx, ]
+    theta.old <- theta.sgd[, i]
+    y[, i+1] <- data$obs.data$A %*% (xi - theta.old)
+  }
+
   beta.0 <- matrix(0, nrow=p, ncol=ncol.theta)
   beta.1 <- matrix(0, nrow=p, ncol=ncol.theta)
   for (i in 1:ncol.theta) {
