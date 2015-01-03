@@ -1,6 +1,6 @@
 # An implementation of stochastic gradient methods for GLMs.
 
-sgd <- function(data, sgd.method, lr, npass=1, ...) {
+sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
   # Find the optimal parameters using a stochastic gradient method for
   # generalized linear models.
   #
@@ -10,6 +10,8 @@ sgd <- function(data, sgd.method, lr, npass=1, ...) {
   #               "LS-SGD", "ISGD", "AI-SGD", "LS-ISGD"
   #   lr: function which computes learning rate with input the iterate index
   #   npass: number of passes over data
+  #   lambda: L2 regularization parameter for cross validation. Defaults to
+  #           performing no cross validation
   #
   # Returns:
   #   A p x n*npass+1 matrix where the jth column is the jth theta update.
@@ -49,23 +51,27 @@ sgd <- function(data, sgd.method, lr, npass=1, ...) {
     ai <- lr(i, ...)
 
     # Make the update.
-    # This is broken since doesn't cover i==1.
     if (sgd.method %in% c("LS-SGD", "LS-ISGD")) {
       y[, i] <- data$A %*% (xi - theta.old)
     }
 
     if (sgd.method %in% c("SGD", "ASGD", "LS-SGD")) {
-      theta.new <- theta.old + ai * (yi - y.pred) * xi
+      # TODO: Test to see if the regularization actually works.
+      #theta.new <- theta.old + ai * (yi - y.pred) * xi
+      theta.new <- theta.old + ai * ((yi - y.pred) * xi + lambda*norm(theta.old, type="2"))
     } else if (sgd.method %in% c("ISGD", "AI-SGD", "LS-ISGD")) {
+      theta.new <- rep(NA, p)
       # 1. Define the search interval.
-      ri <- ai * (yi - y.pred)
+      #ri <- ai * (yi - y.pred)
+      ri <- ai * ((yi - y.pred) + lambda*norm(theta.old, type="2"))
       Bi <- c(0, ri)
       if (ri < 0) {
         Bi <- c(ri, 0)
       }
 
       implicit.fn <- function(u) {
-        u - ai * (yi - glm.model$h(lpred + xi.norm * u))
+        #u - ai * (yi - glm.model$h(lpred + xi.norm * u))
+        u - ai * ((yi - glm.model$h(lpred + xi.norm * u)) + lambda*norm(u, type="2"))
       }
       # 2. Solve implicit equation.
       ksi.new <- NA
@@ -76,6 +82,7 @@ sgd <- function(data, sgd.method, lr, npass=1, ...) {
         ksi.new <- Bi[1]
       }
       theta.new <- theta.old + ksi.new * xi
+      #theta.new <- theta.old + ksi.new
     }
 
     theta.sgd[, i+1] <- theta.new
