@@ -63,6 +63,33 @@ bound.implicit.gamma <- function(exponent, N=1e6, lam=2.5) {
   print(tail(bounds))
 }
 
+implicit.theory.normal <- function(gamma=2) {
+  # Code to check some of the theoretical claims.
+  run.im <- function(data.y, plot=F) {
+    mu.im = 0
+    alpha = 1 / (1+gamma)
+    for(i in 1:length(data.y)) {
+      mu.im = alpha * mu.im + (1-alpha) * data.y[i]
+    }
+    return(mu.im)
+  }
+  
+  nreps = 500
+  mu = 4.5
+  sigma = 1.4
+  nsamples = 1e4
+  theta.im = c()
+  for(j in 1:nreps) {
+    y = rnorm(nsamples, mean=mu, sd=sigma)
+    theta.im[j] <- run.im(y)
+  }
+  plot(hist(theta.im))
+  abline(v=mu, col="red")
+  theoretical.var = sigma^2 * gamma / (2 + gamma)
+  print(sprintf("Variance of implicit estimates = %.3f / Theoretical = %.3f", 
+                var(theta.im), theoretical.var))
+}
+
 Xjt <- function(j, t) {
   # Computes X_j^t defined in (A1)
   # Xj(t+1) = (I - g_t A) Xjt
