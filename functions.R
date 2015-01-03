@@ -203,10 +203,10 @@ plot.risk <- function(data, est) {
   )
 }
 
-run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL) {
+run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F, ...) {
   # Run AI-SGD for a set of parameters and any additionally selected methods,
   # and plot error over training data size. The set of parameters affect only
-  # AI=SGD's learning rate.
+  # AI-SGD's learning rate.
   # TODO: Generalize this function beyond Normal(0, A) data.
   #
   # Args:
@@ -216,7 +216,8 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL) {
   #   n: number of observations
   #   p: number of parameters
   #   add.methods: vector of additional methods to benchmark. Options are
-  #            "SGD", "I-SGD", and "Batch".
+  #                documented in sgd()
+  #   plot.save: boolean specifying whether to save plot to disk or output it
   #
   # Returns:
   #   A ggplot object, plotting error over training data size for each
@@ -242,7 +243,7 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL) {
   # Run AI-SGD for each set of parameters.
   pars.len <- ifelse(is.null(nrow(pars)), 1, nrow(pars)) # if pars is a vector
   for (i in 1:pars.len) {
-    print("Running averaged implicit SGD..")
+    print("Running AI-SGD..")
     # Use parameters from the ith row, or pars itself if pars is a single set of
     # parameters.
     if (pars.len == 1) {
@@ -250,48 +251,49 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL) {
     } else {
       par <- pars[i, ]
     }
-    theta[[i]] <- sgd(d, sgd.method="implicit", averaged=T,
-                          lr=lr, par=par)
+    theta[[i]] <- sgd(d, sgd.method="AI-SGD", lr=lr, par=par, ...)
   }
   names(theta) <- sprintf("AI-SGD, par #%i", 1:pars.len)
   # Run additionally specified methods.
-  if ("SGD" %in% add.methods) {
-    print("Running explicit SGD..")
-    lr.explicit <- function(n, p) {
-      gamma0 <- 1 / (sum(seq(0.01, 1, length.out=p)))
-      alpha <- 1/0.01 # 1/minimal eigenvalue of Fisher information
-      alpha/(alpha/gamma0 + n)
-    }
-    theta$SGD <- sgd(d, sgd.method="explicit",
-                     lr=lr.explicit)
+  lr.explicit <- function(n, p) {
+    gamma0 <- 1 / (sum(seq(0.01, 1, length.out=p)))
+    alpha <- 1/0.01 # 1/minimal eigenvalue of Fisher information
+    alpha/(alpha/gamma0 + n)
   }
-  if ("I-SGD" %in% add.methods) {
-    print("Running implicit SGD..")
-    lr.implicit <- function(n) {
-      alpha <- 1/0.01 # 1/minimal eigenvalue of Fisher information
-      alpha/(alpha + n)
-    }
-    theta$`I-SGD` <- sgd(d, sgd.method="implicit",
-                      lr=lr.implicit)
+  lr.implicit <- function(n) {
+    alpha <- 1/0.01 # 1/minimal eigenvalue of Fisher information
+    alpha/(alpha + n)
   }
-  if ("Batch" %in% add.methods) {
-    print("Running batch method..")
-    theta$Batch <- batch(d, sequence=round(10^seq(
-      log(p + 10, base=10),
-      log(n, base=10), length.out=100))
-      ) # the sequence is equally spaced points on the log scale
+  for (i in add.methods) {
+    if (i %in% c("SGD", "ASGD", "LS-SGD")) {
+      print(sprintf("Running %s..", i))
+      theta[[i]] <- sgd(d, sgd.method=i, lr=lr.explicit, p=p, ...)
+    } else if (i %in% c("ISGD", "AI-SGD", "LS-ISGD")) {
+      print(sprintf("Running %s..", i))
+      theta[[i]] <- sgd(d, sgd.method=i, lr=lr.implicit, ...)
+    } else if (i == "Batch") {
+      print(sprintf("Running %s..", i))
+      theta[[i]] <- batch(d, sequence=round(10^seq(
+        log(p + 10, base=10),
+        log(n, base=10), length.out=100)),
+        ...) # the sequence is equally spaced points on the log scale
+    }
   }
 
-  # Plot and save image.
-  #png(sprintf("img/exp_%s_n%ip%i.png", model, log(n, base=10), log(p,
-  #  base=10)), width=1280, height=720)
-  plot.risk(d, theta)
-  #dev.off()
+  if (plot.save == TRUE) {
+    # Plot and save image.
+    png(sprintf("img/exp_%s_n%ip%i.png", model, log(n, base=10), log(p,
+      base=10)), width=1280, height=720)
+    plot.risk(d, theta)
+    dev.off()
+  } else {
+    return(plot.risk(d, theta))
+  }
 }
 
 benchmark <- function(n, p, rho,
                       methods=c("glmnet (naive)", "glmnet (cov)",
-                                "sgd (implicit)", "sgd (averaged implicit)"),
+                                "ISGD", "AI-SGD"),
                       nreps=3) {
   # Benchmark stochastic gradient methods along with glmnet.
   # TODO: Generalize this function beyond correlated Normal data.
@@ -301,8 +303,7 @@ benchmark <- function(n, p, rho,
   #   p: number of parameters
   #   rho: correlation
   #   methods: vector of methods to benchmark. Options are "glmnet (naive)",
-  #            "glmnet (cov)", "sgd (explicit)", "sgd (averaged explicit)", "sgd
-  #            (implicit)", "sgd (averaged implicit)".
+  #            "glmnet (cov)", and all methods documented in sgd()
   #   nreps: number of replications
   #
   # Returns:
@@ -377,24 +378,14 @@ benchmark <- function(n, p, rho,
            type.gaussian="covariance")}
         )[1]
         mse.j <- median(apply(fit$beta, 2, function(est) dist(est, theta)))
-      } else if (methods[j] == "sgd (explicit)") {
+      } else if (methods[j] %in% c("SGD", "ASGD", "LS-SGD")) {
         time.j <- system.time(
-          {fit=sgd(data, sgd.method="explicit", lr=lr.explicit, rho=rho)}
+          {fit=sgd(data, sgd.method=methods[j], lr=lr.explicit, p=p, rho=rho)}
         )[1]
         mse.j <- dist(fit[, ncol(fit)], theta)
-      } else if (methods[j] == "sgd (averaged explicit)") {
+      } else if (methods[j] %in% c("ISGD", "AI-SGD", "LS-ISGD")) {
         time.j <- system.time(
-          {fit=sgd(data, sgd.method="explicit", lr=lr.explicit, rho=rho)}
-        )[1]
-        mse.j <- dist(fit[, ncol(fit)], theta)
-      } else if (methods[j] == "sgd (implicit)") {
-        time.j <- system.time(
-          {fit=sgd(data, sgd.method="implicit", lr=lr.implicit)}
-        )[1]
-        mse.j <- dist(fit[, ncol(fit)], theta)
-      } else if (methods[j] == "sgd (averaged implicit)") {
-        time.j <- system.time(
-          {fit=sgd(data, sgd.method="implicit", lr=lr.implicit)}
+          {fit=sgd(data, sgd.method=methods[j], lr=lr.implicit)}
         )[1]
         mse.j <- dist(fit[, ncol(fit)], theta)
       }
@@ -441,4 +432,3 @@ random.matrix <- function(lambdas=seq(0.01, 1, length.out=100)) {
   A <- Q %*% diag(lambdas) %*% t(Q)
   return(A)
 }
-

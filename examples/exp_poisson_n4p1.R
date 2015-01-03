@@ -22,4 +22,4 @@ source("functions.R")
 source("batch.R")
 source("sgd.R")
 
-run("poisson", pars=c(10, -0.8), add.methods=c("SGD", "I-SGD", "Batch"))
+run("poisson", pars=c(10, -0.8), add.methods=c("SGD", "ISGD", "Batch"))

@@ -39,8 +39,10 @@ if (bool.tune) {
 }
 
 # Optimal is (apparently) (Infty, -1/2).
-pars <- rbind(c(1e6, -1/2), c(1e1, -1), c(1/0.01, -1))
-run("gaussian", pars=pars, n=1e5, p=1e2)
+#pars <- rbind(c(1e6, -1/2), c(1e1, -1), c(1/0.01, -1))
+# Testing constant learning rates.
+pars <- rbind(c(0.001,0), c(0.005, 0))
+run("gaussian", pars=pars, n=1e4, p=1e2, add.methods="SGD")
 
 ################################################################################
 # Poisson, n=1e4, p=10

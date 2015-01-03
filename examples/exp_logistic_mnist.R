@@ -37,9 +37,9 @@ for (i in 0:8) {
   data$Y <- rep(NA, nrow(train))
   data$Y[train$label != i] <- 0
   data$Y[train$label == i] <- 1
-  # Run IA-SGD.
-  print(sprintf("Running IA-SGD for binary classifier on %i..", i))
-  list.theta[[i+1]] <- sgd(data, sgd.method="implicit", averaged=T, lr=lr)
+  # Run AI-SGD.
+  print(sprintf("Running AI-SGD for binary classifier on %i..", i))
+  list.theta[[i+1]] <- sgd(data, sgd.method="AI-SGD", lr=lr)
 }
 
 # Examine training error for each binary classifier.
