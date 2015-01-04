@@ -39,7 +39,7 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
   # Will return this matrix.
   theta.sgd <- matrix(0, nrow=p, ncol=niters+1)
   if (sgd.method == "SVRG") {
-    # Mark the true number of iterations for each sgd iterate in SVRG (1, m, 2*m, ...).
+    # Mark the true number of iterations for each sgd iterate in SVRG (0, m, 2*m, ...).
     colnames(theta.sgd) <- 0:niters * m + 1
   }
   theta.new <- NULL
@@ -84,8 +84,6 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
 sgd.update <- function(theta.old, xi, yi, ai, lambda, glm.model) {
   # Shorthand for derivative of log-likelihood for GLMs with CV.
   score <- function(theta) {
-    #TODO
-    #(yi - glm.model$h(sum(xi * theta))) * xi
     (yi - glm.model$h(sum(xi * theta))) * xi + lambda*sqrt(sum(theta^2))
   }
   theta.new <- theta.old + ai * score(theta.old)
@@ -95,21 +93,22 @@ isgd.update <- function(theta.old, xi, yi, ai, lambda, glm.model) {
   # Make computation easier.
   xi.norm <- sum(xi^2)
   lpred <- sum(xi * theta.old)
-  y.pred <- glm.model$h(lpred)  # link function of GLM
+  get.score.coeff <- function(ksi) {
+    # Returns:
+    #   The scalar value yi - h(theta_i' xi + xi^2 ξ) + λ*||theta_i+ξ||_2
+    #TODO
+    #yi - glm.model$h(lpred + xi.norm * ksi)
+    yi - glm.model$h(lpred + xi.norm * ksi) + lambda*sqrt(sum((theta.old+ksi)^2))
+  }
   # 1. Define the search interval.
-  #TODO
-  #ri <- ai * (yi - y.pred)
-  ri <- ai * ((yi - y.pred) + lambda*sqrt(sum(theta.old^2)))
+  ri <- ai * get.score.coeff(0)
   Bi <- c(0, ri)
   if (ri < 0) {
     Bi <- c(ri, 0)
   }
 
   implicit.fn <- function(u) {
-    #TODO
-    #u - ai * (yi - glm.model$h(lpred + xi.norm * u))
-    #u - ai * ((yi - glm.model$h(lpred + xi.norm * u)) + lambda*sqrt(sum(theta.old+u^2)))
-    u - ai * ((yi - glm.model$h(lpred + xi.norm * u)) + lambda*sqrt(sum(u^2)))
+    u - ai * get.score.coeff(u)
   }
   # 2. Solve implicit equation.
   ksi.new <- NA
@@ -120,8 +119,6 @@ isgd.update <- function(theta.old, xi, yi, ai, lambda, glm.model) {
     ksi.new <- Bi[1]
   }
   theta.new <- theta.old + ksi.new * xi
-  #TODO
-  #theta.new <- theta.old + ksi.new
   return(theta.new)
 }
 svrg.update <- function(theta.old, data, lr, lambda, glm.model, m, ...) {
@@ -129,8 +126,6 @@ svrg.update <- function(theta.old, data, lr, lambda, glm.model, m, ...) {
   p <- ncol(data$X)
   # Shorthand for derivative of log-likelihood for GLMs with CV.
   score <- function(theta) {
-    #TODO
-    #(yi - glm.model$h(sum(xi * theta))) * xi
     (yi - glm.model$h(sum(xi * theta))) * xi + lambda*sqrt(sum(theta^2))
   }
   # Do one pass of data to obtain the average gradient.
