@@ -271,6 +271,10 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F, ...) {
     } else if (i %in% c("ISGD", "AI-SGD", "LS-ISGD")) {
       print(sprintf("Running %s..", i))
       theta[[i]] <- sgd(d, sgd.method=i, lr=lr.implicit, ...)
+    } else if (i == "SVRG") {
+      print(sprintf("Running %s..", i))
+      #TODO
+      theta[[i]] <- sgd(d, sgd.method=i, lr=lr, par=c(0.001, 0), ...)
     } else if (i == "Batch") {
       print(sprintf("Running %s..", i))
       theta[[i]] <- batch(d, sequence=round(10^seq(
@@ -297,6 +301,7 @@ benchmark <- function(n, p, rho,
                       nreps=3) {
   # Benchmark stochastic gradient methods along with glmnet.
   # TODO: Generalize this function beyond correlated Normal data.
+  # TODO: add SVRG
   #
   # Args:
   #   n: number of observations
