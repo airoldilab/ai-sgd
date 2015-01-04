@@ -56,7 +56,6 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
     # Compute learning rate.
     ai <- lr(i, ...)
 
-    # TODO: Test to see if the regularization actually works.
     if (sgd.method %in% c("SGD", "ASGD", "LS-SGD")) {
       theta.new <- sgd.update(theta.old, xi, yi, ai, lambda, glm.model)
     } else if (sgd.method %in% c("ISGD", "AI-SGD", "LS-ISGD")) {
@@ -80,7 +79,9 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
   return(theta.sgd)
 }
 
-# Define update functions.
+################################################################################
+# Update functions
+################################################################################
 sgd.update <- function(theta.old, xi, yi, ai, lambda, glm.model) {
   # Shorthand for derivative of log-likelihood for GLMs with CV.
   score <- function(theta) {
@@ -96,8 +97,6 @@ isgd.update <- function(theta.old, xi, yi, ai, lambda, glm.model) {
   get.score.coeff <- function(ksi) {
     # Returns:
     #   The scalar value yi - h(θ_i' xi + xi^2 ξ) + λ*||θ_i+ξ||_2
-    #TODO
-    #yi - glm.model$h(lpred + xi.norm * ksi)
     yi - glm.model$h(lpred + xi.norm * ksi) + lambda*sqrt(sum((theta.old+ksi)^2))
   }
   # 1. Define the search interval.
@@ -106,7 +105,6 @@ isgd.update <- function(theta.old, xi, yi, ai, lambda, glm.model) {
   if (ri < 0) {
     Bi <- c(ri, 0)
   }
-
   implicit.fn <- function(u) {
     u - ai * get.score.coeff(u)
   }
@@ -149,7 +147,9 @@ svrg.update <- function(theta.old, data, lr, lambda, glm.model, m, ...) {
   return(theta.new)
 }
 
-# Define post-processing functions.
+################################################################################
+# Post-processing functions
+################################################################################
 average.post <- function(theta.sgd) {
   return(t(apply(theta.sgd, 1, function(x) {
     cumsum(x)/(1:length(x))

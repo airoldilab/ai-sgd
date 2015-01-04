@@ -24,8 +24,8 @@ source("functions.R")
 source("batch.R")
 #source("sgd.R")
 
-# sgd.R doesn't seem to work
-sgd.temp <- function(data, sgd.method, lr, ...) {
+# sgd.R doesn't work because we assume no slope for this example
+sgd.noslope <- function(data, sgd.method, lr, ...) {
   n <- nrow(data$X)
   p <- ncol(data$X)
   theta.sgd <- matrix(0, nrow=p, ncol=n+1)
@@ -71,10 +71,10 @@ lr.implicit <- function(n) {
 subset.idx <- c(seq(100, 900, by=100), seq(1000, 1e5, by=1000))
 
 theta <- list()
-theta[["SGD"]] <- sgd.temp(d, sgd.method="SGD", lr=lr.explicit)[, subset.idx]
-theta[["ISGD"]] <- sgd.temp(d, sgd.method="ISGD", lr=lr.implicit)[, subset.idx]
-theta[["ASGD"]] <- sgd.temp(d, sgd.method="ASGD", lr=lr.avg)[, subset.idx]
-theta[["AI-SGD"]] <- sgd.temp(d, sgd.method="AI-SGD", lr=lr.implicit)[, subset.idx]
+theta[["SGD"]] <- sgd.noslope(d, sgd.method="SGD", lr=lr.explicit)[, subset.idx]
+theta[["ISGD"]] <- sgd.noslope(d, sgd.method="ISGD", lr=lr.implicit)[, subset.idx]
+theta[["ASGD"]] <- sgd.noslope(d, sgd.method="ASGD", lr=lr.avg)[, subset.idx]
+theta[["AI-SGD"]] <- sgd.noslope(d, sgd.method="AI-SGD", lr=lr.implicit)[, subset.idx]
 print("Note: This batch requires the slope=F parameter to be uncommented!")
 theta[["Batch"]] <- batch(d, sequence=subset.idx, slope=F)
 for (i in 1:length(theta)) {
