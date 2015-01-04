@@ -3,11 +3,11 @@
 # a correlated normal distribution.
 #
 # Data generating process:
-#   Y = sum_{j=1}^p X_j*beta_j + k*epsilon, where
+#   Y = sum_{j=1}^p X_j*β_j + k*ɛ, where
 #     X ~ Multivariate normal where each covariate Xj, Xj' has equal correlation
-#       rho; rho ranges over (0,0.1,0.2,0.5,0.9,0.95) for each pair (n, p)
-#     beta_j = (-1)^j exp(-2(j-1)/20)
-#     epsilon ~ Normal(0,1)
+#       ρ; ρ ranges over (0,0.1,0.2,0.5,0.9,0.95) for each pair (n, p)
+#     β_j = (-1)^j exp(-2(j-1)/20)
+#     ɛ ~ Normal(0,1)
 #     k = 3
 # Dimensions:
 #   n=1000, p=100

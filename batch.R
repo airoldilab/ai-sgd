@@ -25,12 +25,14 @@ batch <- function(data, sequence=1:nrow(data$X), intercept=F, slope=T) {
   glm.model <- data$model
   # Return the mean if one desires to fit with a zero slope.
   # NOTE(ptoulis): This was a bit confusing. Where are we using no-slope?
-#   if (slope == FALSE) {
-#     theta.batch <- t(apply(data$X, 2, function(x) {
-#       cumsum(x)/(1:length(x))
-#       }))
-#     return(theta.batch[, sequence])
-#   }
+  #if (slope == FALSE) {
+  # theta.batch <- t(apply(data$X, 2, function(x) {
+  #   cumsum(x)/(1:length(x))
+  #   }))
+  # theta.batch <- theta.batch[, sequence]
+  # colnames(theta.batch) <- sequence
+  # return(theta.batch)
+  #}
   # Initialize parameter matrix for batch (p x length(sequence)).
   # Will return this matrix.
   theta.batch <- matrix(0, nrow=p, ncol=length(sequence))

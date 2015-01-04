@@ -16,7 +16,7 @@ bool.tune <- FALSE
 lr <- function(n, par) {
   # Ruppert's learning rate.
   # Note:
-  # alpha / (alpha + n) = 1 / (1 + lambda0*n), where lambda0 = 1/alpha
+  # α / (α + n) = 1 / (1 + lambda0*n), where lambda0 = 1/α
   D <- par[1]
   alpha <- par[2]
   D*n^alpha

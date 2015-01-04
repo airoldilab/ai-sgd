@@ -95,7 +95,7 @@ isgd.update <- function(theta.old, xi, yi, ai, lambda, glm.model) {
   lpred <- sum(xi * theta.old)
   get.score.coeff <- function(ksi) {
     # Returns:
-    #   The scalar value yi - h(theta_i' xi + xi^2 ξ) + λ*||theta_i+ξ||_2
+    #   The scalar value yi - h(θ_i' xi + xi^2 ξ) + λ*||θ_i+ξ||_2
     #TODO
     #yi - glm.model$h(lpred + xi.norm * ksi)
     yi - glm.model$h(lpred + xi.norm * ksi) + lambda*sqrt(sum((theta.old+ksi)^2))

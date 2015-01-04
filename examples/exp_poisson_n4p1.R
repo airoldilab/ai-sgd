@@ -3,10 +3,10 @@
 # Poisson distribution.
 #
 # Data generating process:
-#   Y ~ Poisson(lambda), where lambda = exp(X %*% theta)
+#   Y ~ Poisson(λ), where λ = exp(X %*% θ)
 #     X ~ Normal(0, A), where A is a randomly generated matrix with
 #       eigenvalues being equally spaced points from 0.01 to 1
-#     theta = (2*exp(-1),...,2*exp(-1))
+#     θ = (2*exp(-1),...,2*exp(-1))
 # Dimensions:
 #   n=1e4 observations
 #   p=1e1 parameters

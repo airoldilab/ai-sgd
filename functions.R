@@ -189,8 +189,8 @@ plot.risk <- function(data, est) {
   dat <- do.call(rbind, list.bias)
 
   # Plot.
-  # Get range of iterations to plot (equivalent to c(dim.p, dim.n))
-  iter.range <- c(max(sapply(est, nrow)), max(sapply(est, ncol)))
+  # Get range of iterations to plot (p, n*npass+1)
+  iter.range <- c(ncol(data$X), max(dat$t))
   # TODO: Make the plot a bit cleaner (e.g. larger size?)
   return(dat %>%
     ggplot(aes(x=t, y=est.bias, group=method, color=method)) +
@@ -232,7 +232,7 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F, ...) {
   lr <- function(n, par) {
     # Ruppert's learning rate.
     # Note:
-    # alpha / (alpha + n) = 1 / (1 + lambda0*n), where lambda0 = 1/alpha
+    # α / (α + n) = 1 / (1 + lambda0*n), where lambda0 = 1/α
     D <- par[1]
     alpha <- par[2]
     D*n^alpha
