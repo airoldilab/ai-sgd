@@ -130,7 +130,7 @@ generate.data <- function(X.list,
 }
 
 print.data <- function(data) {
-  # Do a pretty print of the object generated from sample.data.
+  # Do a pretty print of the object generated from generate.data.
   nx <- nrow(data$X)
   ny <- length(data$Y)
   p <- ncol(data$X)
@@ -151,7 +151,7 @@ plot.risk <- function(data, est) {
   # TODO: Generalize this function beyond Normal(0, A) data.
   #
   # Args:
-  #   data: DATA object created through sample.data(..) (see functions.R)
+  #   data: DATA object created through generate.data(..) (see functions.R)
   #   est: A list of matrix estimates, one for each optimization method run on
   #        data.
   #

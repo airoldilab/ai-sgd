@@ -5,7 +5,7 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
   # generalized linear models.
   #
   # Args:
-  #   data: DATA object created through sample.data(..) (see functions.R)
+  #   data: DATA object created through generate.data(..) (see functions.R)
   #   sgd.method: a string which is one of the following: "SGD", "ASGD",
   #               "LS-SGD", "ISGD", "AI-SGD", "LS-ISGD", "SVRG"
   #   lr: function which computes learning rate with input the iterate index
