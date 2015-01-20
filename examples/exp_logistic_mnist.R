@@ -25,7 +25,7 @@ idxs <- sample(1:nrow(raw), floor(0.01*nrow(raw))) # using very small training s
 raw.train <- raw[idxs,]
 raw.test <- raw[-idxs, ]
 
-# Form DATA object for training.  data.train <- list()
+# Form DATA object for training.
 data.train <- list()
 data.train$X <- as.matrix(subset(raw.train, select=-label))
 data.train$Y <- raw.train$label

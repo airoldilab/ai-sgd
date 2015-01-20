@@ -26,8 +26,8 @@ train <- function(data, sgd.method, par, ...) {
     data$Y <- rep(0, length(data$Y))
     data$Y[temp == categories[i]] <- 1
     # Run AI-SGD.
-    print(sprintf("Running %s for binary classifier on %i..", sgd.method,
-      categories[i]))
+    print(sprintf("Running %s, par %s for binary classifier on %i..", sgd.method,
+      par, categories[i]))
     list.theta[[i]] <- sgd(data, sgd.method=sgd.method, lr=lr, par=par, ...)
     data$Y <- temp
     # Do this to make indexing the same format as SVRG's.
@@ -88,7 +88,7 @@ run.logistic <- function(data.train, data.test, sgd.methods, pars, npass=2, plt=
     list.theta <- train(data.train, sgd.method=sgd.methods[i], par=pars[i],
       npass=npass)
     idx.range <- ((i-1)*(npass/2+1)+1):(i*(npass/2+1))
-    dat[idx.range, "method"] <- sgd.methods[i]
+    dat[idx.range, "method"] <- sprintf("%s %s", sgd.methods[i], pars[i])
     dat[idx.range, "passes"] <- seq(0, npass, by=2)
     temp <- test(data.test, list.theta, npass)
     dat[idx.range, "error"] <- temp
