@@ -252,8 +252,8 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F, ...) {
       par <- pars[i, ]
     }
     theta[[i]] <- sgd(d, sgd.method="AI-SGD", lr=lr, par=par, ...)
+    names(theta)[i] <- sprintf("AI-SGD (%s, %s)", par[1], par[2])
   }
-  names(theta) <- sprintf("AI-SGD, par #%i", 1:pars.len)
   # Run additionally specified methods.
   lr.explicit <- function(n, p) {
     gamma0 <- 1 / (sum(seq(0.01, 1, length.out=p)))
@@ -286,10 +286,9 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F, ...) {
 
   if (plot.save == TRUE) {
     # Plot and save image.
-    png(sprintf("img/exp_%s_n%ip%i.png", model, log(n, base=10), log(p,
-      base=10)), width=1280, height=720)
-    plot.risk(d, theta)
-    dev.off()
+    plt <- plot.risk(d, theta)
+    ggsave(sprintf("img/exp_%s_n%ip%i.png", model, log(n, base=10), log(p,
+      base=10)), plot=plt)
   } else {
     return(plot.risk(d, theta))
   }
