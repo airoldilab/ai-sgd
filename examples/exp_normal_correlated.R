@@ -27,22 +27,21 @@ source("sgd.R")
 benchmark.all <- function(N=c(1000, 5000, 100, 100, 100, 100),
                           P=c(100, 100, 1000, 5000, 20000, 50000),
                           rhos=c(0.0, 0.1, 0.2, 0.5, 0.9, 0.95)) {
-  # Run all experiments for the setup in Friedman et al.
-  # Initialize results data frame.
-  results <- as.data.frame(matrix(NA, nrow=length(N)*length(rhos), ncol=3))
-  names(results) <- c("n", "p", "rho")
-  results$n <- rep(N, length(rhos))
-  results$p <- rep(P, length(rhos))
-  results$rho <- rep(rhos, each=length(N))
-  # Collect the benchmark data.
-  dat <- data.frame()
-  for (i in 1:nrow(results)) {
-    n <- results$n[i]
-    p <- results$p[i]
-    rho <- results$rho[i]
+  # By default, run all experiments for the setup in Friedman et al.
+  # Collect the benchmark data, running over every combination.
+  out <- data.frame()
+  for (i in 1:(length(N)*length(rhos))) {
+    if (i %% length(N) != 0) {
+      n <- N[i %% length(N)]
+      p <- P[i %% length(N)]
+    } else {
+      n <- N[length(N)]
+      p <- P[length(P)]
+    }
+    rho <- rep(rhos, each=length(N))[i] # use the same rho for length(N) times
     print(sprintf("(n, p, rho): (%i, %i, %0.2f)", n, p, rho))
-    dat <- rbind(dat, benchmark(n, p, rho))
+    out <- rbind(out, cbind(n, p, rho, benchmark(n, p, rho)))
   }
-  results <- cbind(results, dat)
-  return(results)
+  names(out)[1:3] <- c("n", "p", "rho")
+  return(out)
 }
