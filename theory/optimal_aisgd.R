@@ -45,7 +45,7 @@ evalPar <- function(par, data, idx=1:min(1e3, nrow(data$X)), lr, param=T) {
   # Run SGD.
   theta.sgd <- sgd(data, sgd.method="AI-SGD", lr=lr, par=par)
   theta.sgd <- theta.sgd[, ncol(theta.sgd)]
-  # Use mse of h(X*theta) from y.
+  # Use mse of h(X*θ) from y.
   cost <- norm(data$Y - data$model$h(data$X %*% theta.sgd), type="2")
   if (length(par) == 1) {
     print(sprintf("Trying par=%0.3f yields cost %0.3f", par, cost))

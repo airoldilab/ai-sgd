@@ -2,14 +2,14 @@
 # normal distribution.
 #
 # Data generating process:
-#   Y = X %*% theta + epsilon, where
+#   Y = X %*% θ + ɛ, where
 #     X ~ Normal(0, A), where A is a randomly generated matrix with eigenvalues
-#     (1,1,1,0.02,0.02,...,0.02)
-#     theta = (...)
-#     epsilon ~ Normal(0,1)
+#     (1,...,1)
+#     θ = (1,...,1)
+#     ɛ ~ Normal(0,1)
 # Dimensions:
 #   n=1e5 observations
-#   p=1e2 parameters
+#   p=1e1 parameters
 #
 # @pre Current working directory is the root directory of this repository
 rm(list=ls())

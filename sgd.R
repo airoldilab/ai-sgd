@@ -5,9 +5,9 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
   # generalized linear models.
   #
   # Args:
-  #   data: DATA object created through sample.data(..) (see functions.R)
+  #   data: DATA object created through generate.data(..) (see functions.R)
   #   sgd.method: a string which is one of the following: "SGD", "ASGD",
-  #               "LS-SGD", "ISGD", "AI-SGD", "LS-ISGD"
+  #               "LS-SGD", "ISGD", "AI-SGD", "LS-ISGD", "SVRG"
   #   lr: function which computes learning rate with input the iterate index
   #   npass: number of passes over data
   #   lambda: L2 regularization parameter for cross validation. Defaults to
@@ -19,22 +19,34 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
   # Check input.
   stopifnot(
     all(is.element(c("X", "Y", "model"), names(data))),
-    sgd.method %in% c("SGD", "ASGD", "LS-SGD", "ISGD", "AI-SGD", "LS-ISGD")
+    sgd.method %in% c("SGD", "ASGD", "LS-SGD", "ISGD", "AI-SGD", "LS-ISGD",
+      "SVRG")
   )
   # Initialize constants.
   n <- nrow(data$X)
   p <- ncol(data$X)
   niters <- n*npass
   glm.model <- data$model
+  # Initialize frequency and change niters if method is SVRG, following notation
+  # in Johnson and Zhang (2013).
+  m <- NULL
+  if (sgd.method == "SVRG") {
+    stopifnot(npass %% 2 == 0)
+    m <- 2*n
+    niters <- npass/2 # do this many 2-passes over the data
+  }
   # Initialize parameter matrix for the stochastic gradient descent (p x n*npass+1).
   # Will return this matrix.
   theta.sgd <- matrix(0, nrow=p, ncol=niters+1)
+  if (sgd.method == "SVRG") {
+    # Mark the true number of iterations for each sgd iterate in SVRG (0, m, 2*m, ...).
+    colnames(theta.sgd) <- 0:niters * m + 1
+  }
   theta.new <- NULL
   ai <- NULL
 
   # Run the stochastic gradient method.
   # Main iteration: i = #iteration
-  # TODO: Test to see if the regularization actually works.
   for (i in 1:niters) {
     # Index.
     idx <- ifelse(i %% n == 0, n, i %% n) # sample index of data
@@ -48,6 +60,8 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
       theta.new <- sgd.update(theta.old, xi, yi, ai, lambda, glm.model)
     } else if (sgd.method %in% c("ISGD", "AI-SGD", "LS-ISGD")) {
       theta.new <- isgd.update(theta.old, xi, yi, ai, lambda, glm.model)
+    } else if (sgd.method == "SVRG") {
+      theta.new <- svrg.update(theta.old, data, lr, lambda, glm.model, m, ...)
     }
     theta.sgd[, i+1] <- theta.new
   }
@@ -65,11 +79,12 @@ sgd <- function(data, sgd.method, lr, npass=1, lambda=0, ...) {
   return(theta.sgd)
 }
 
-# Define update functions.
+################################################################################
+# Update functions
+################################################################################
 sgd.update <- function(theta.old, xi, yi, ai, lambda, glm.model) {
   # Shorthand for derivative of log-likelihood for GLMs with CV.
   score <- function(theta) {
-    #(yi - glm.model$h(sum(xi * theta))) * xi
     (yi - glm.model$h(sum(xi * theta))) * xi + lambda*sqrt(sum(theta^2))
   }
   theta.new <- theta.old + ai * score(theta.old)
@@ -79,19 +94,19 @@ isgd.update <- function(theta.old, xi, yi, ai, lambda, glm.model) {
   # Make computation easier.
   xi.norm <- sum(xi^2)
   lpred <- sum(xi * theta.old)
-  y.pred <- glm.model$h(lpred)  # link function of GLM
+  get.score.coeff <- function(ksi) {
+    # Returns:
+    #   The scalar value yi - h(θ_i' xi + xi^2 ξ) + λ*||θ_i+ξ||_2
+    yi - glm.model$h(lpred + xi.norm * ksi) + lambda*sqrt(sum((theta.old+ksi)^2))
+  }
   # 1. Define the search interval.
-  #ri <- ai * (yi - y.pred)
-  ri <- ai * ((yi - y.pred) + lambda*sqrt(sum(theta.old^2)))
+  ri <- ai * get.score.coeff(0)
   Bi <- c(0, ri)
   if (ri < 0) {
     Bi <- c(ri, 0)
   }
-
   implicit.fn <- function(u) {
-    #u - ai * (yi - glm.model$h(lpred + xi.norm * u))
-    #u - ai * ((yi - glm.model$h(lpred + xi.norm * u)) + lambda*sqrt(sum(theta.old+u^2)))
-    u - ai * ((yi - glm.model$h(lpred + xi.norm * u)) + lambda*sqrt(sum(u^2)))
+    u - ai * get.score.coeff(u)
   }
   # 2. Solve implicit equation.
   ksi.new <- NA
@@ -102,19 +117,39 @@ isgd.update <- function(theta.old, xi, yi, ai, lambda, glm.model) {
     ksi.new <- Bi[1]
   }
   theta.new <- theta.old + ksi.new * xi
-  #theta.new <- theta.old + ksi.new
   return(theta.new)
 }
-ls.update <- function(i, data, theta.sgd) {
-  # TODO: Generalize beyond Normal(0, A) data.
+svrg.update <- function(theta.old, data, lr, lambda, glm.model, m, ...) {
   n <- nrow(data$X)
-  idx <- ifelse(i %% n == 0, n, i %% n) # sample index of data
-  xi <- data$X[idx, ]
-  theta.old <- theta.sgd[, i]
-  return(data$obs.data$A %*% (xi - theta.old))
+  p <- ncol(data$X)
+  # Shorthand for derivative of log-likelihood for GLMs with CV.
+  score <- function(theta) {
+    (yi - glm.model$h(sum(xi * theta))) * xi + lambda*sqrt(sum(theta^2))
+  }
+  # Do one pass of data to obtain the average gradient.
+  mu <- rep(0, p)
+  for (idx in 1:n) {
+    xi <- data$X[idx, ]
+    yi <- data$Y[idx]
+    mu <- mu + score(theta.old)/n
+  }
+  # Run inner loop, updating w by using a random sample.
+  w <- theta.old
+  for (mi in 1:m) {
+    idx <- sample(1:n, 1)
+    xi <- data$X[idx, ]
+    yi <- data$Y[idx]
+    ai <- lr(mi, ...)
+    w <- w + ai * (score(w) - score(theta.old) + mu)
+  }
+  # Assign SGD iterate to the last updated weight ("option I").
+  theta.new <- w
+  return(theta.new)
 }
 
-# Define post-processing functions.
+################################################################################
+# Post-processing functions
+################################################################################
 average.post <- function(theta.sgd) {
   return(t(apply(theta.sgd, 1, function(x) {
     cumsum(x)/(1:length(x))

@@ -130,7 +130,7 @@ generate.data <- function(X.list,
 }
 
 print.data <- function(data) {
-  # Do a pretty print of the object generated from sample.data.
+  # Do a pretty print of the object generated from generate.data.
   nx <- nrow(data$X)
   ny <- length(data$Y)
   p <- ncol(data$X)
@@ -151,7 +151,7 @@ plot.risk <- function(data, est) {
   # TODO: Generalize this function beyond Normal(0, A) data.
   #
   # Args:
-  #   data: DATA object created through sample.data(..) (see functions.R)
+  #   data: DATA object created through generate.data(..) (see functions.R)
   #   est: A list of matrix estimates, one for each optimization method run on
   #        data.
   #
@@ -189,8 +189,8 @@ plot.risk <- function(data, est) {
   dat <- do.call(rbind, list.bias)
 
   # Plot.
-  # Get range of iterations to plot (equivalent to c(dim.p, dim.n))
-  iter.range <- c(max(sapply(est, nrow)), max(sapply(est, ncol)))
+  # Get range of iterations to plot (p, n*npass+1)
+  iter.range <- c(ncol(data$X), max(dat$t))
   # TODO: Make the plot a bit cleaner (e.g. larger size?)
   return(dat %>%
     ggplot(aes(x=t, y=est.bias, group=method, color=method)) +
@@ -232,7 +232,7 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F, ...) {
   lr <- function(n, par) {
     # Ruppert's learning rate.
     # Note:
-    # alpha / (alpha + n) = 1 / (1 + lambda0*n), where lambda0 = 1/alpha
+    # α / (α + n) = 1 / (1 + lambda0*n), where lambda0 = 1/α
     D <- par[1]
     alpha <- par[2]
     D*n^alpha
@@ -252,8 +252,8 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F, ...) {
       par <- pars[i, ]
     }
     theta[[i]] <- sgd(d, sgd.method="AI-SGD", lr=lr, par=par, ...)
+    names(theta)[i] <- sprintf("AI-SGD (%s, %s)", par[1], par[2])
   }
-  names(theta) <- sprintf("AI-SGD, par #%i", 1:pars.len)
   # Run additionally specified methods.
   lr.explicit <- function(n, p) {
     gamma0 <- 1 / (sum(seq(0.01, 1, length.out=p)))
@@ -271,6 +271,10 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F, ...) {
     } else if (i %in% c("ISGD", "AI-SGD", "LS-ISGD")) {
       print(sprintf("Running %s..", i))
       theta[[i]] <- sgd(d, sgd.method=i, lr=lr.implicit, ...)
+    } else if (i == "SVRG") {
+      print(sprintf("Running %s..", i))
+      #TODO
+      theta[[i]] <- sgd(d, sgd.method=i, lr=lr, par=c(0.001, 0), ...)
     } else if (i == "Batch") {
       print(sprintf("Running %s..", i))
       theta[[i]] <- batch(d, sequence=round(10^seq(
@@ -282,10 +286,9 @@ run <- function(model, pars, n=1e4, p=1e1, add.methods=NULL, plot.save=F, ...) {
 
   if (plot.save == TRUE) {
     # Plot and save image.
-    png(sprintf("img/exp_%s_n%ip%i.png", model, log(n, base=10), log(p,
-      base=10)), width=1280, height=720)
-    plot.risk(d, theta)
-    dev.off()
+    plt <- plot.risk(d, theta)
+    ggsave(sprintf("img/exp_%s_n%ip%i.png", model, log(n, base=10), log(p,
+      base=10)), plot=plt)
   } else {
     return(plot.risk(d, theta))
   }
@@ -297,6 +300,7 @@ benchmark <- function(n, p, rho,
                       nreps=3) {
   # Benchmark stochastic gradient methods along with glmnet.
   # TODO: Generalize this function beyond correlated Normal data.
+  # TODO: add SVRG
   #
   # Args:
   #   n: number of observations
