@@ -63,6 +63,18 @@ bound.implicit.gamma <- function(exponent, N=1e6, lam=2.5) {
   print(tail(bounds))
 }
 
+Dot.term <- function(exponent, N=1e5, lam=2) {
+  # learning rates.
+  g = c(1, gamma.j(1:N, exponent=exponent))
+  f = 1 / (1 + lam * g)
+  fprod = cumprod(f)
+  tvals = seq(10, N, length.out=1000)
+  
+  D0t = sapply(tvals, function(t) sum(head(fprod, t)))
+  plot(tvals, D0t, type="l")
+  print(tail(D0t))
+}
+
 implicit.theory.normal <- function(gamma=2) {
   # Code to check some of the theoretical claims.
   run.im <- function(data.y, plot=F) {
