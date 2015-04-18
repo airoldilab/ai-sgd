@@ -92,6 +92,10 @@ cox.sgd <- function(data, niters=1e3, C=1, implicit=F, averaging=F) {
     Hj = sum(head(d, j) / head(rev(cumsum(rev(ksi))), j))  
     
     # Defined for the implicit
+    # TODO(ptoulis): Numerical problem still exists. 
+    #   beta params can still get very large, whereas Hj goes down. 
+    #   Should we normalize?
+    # 
     if(implicit) {
       Xj.norm = sum(Xj**2)
       fj = exp(sum(beta * Xj))
@@ -115,7 +119,9 @@ cox.sgd <- function(data, niters=1e3, C=1, implicit=F, averaging=F) {
      
     # Update. (lam=1 for explicit -- updated for implicit)
     beta = beta + gamma_i * lam * (d[j] - Hj * ksi[j]) * Xj
-    
+    if(dist(beta, rep(0, length(beta))) > 1e1) {
+      stop("Possible divergence")
+    }
     if(averaging) {
       beta.bar = (1/i) * ((i-1) * beta.bar + beta)
       mse <- c(mse, dist(beta.bar, data$beta))
