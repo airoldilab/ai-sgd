@@ -93,23 +93,6 @@ cox.sgd <- function(data, niters=1e3, C=1, implicit=F, averaging=F) {
     
     # Defined for the implicit
     if(implicit) {
-#       fj <- function(b) {
-#         a = d[j] - Hj * exp(b)
-#         if(a==-Inf) return(-1e5)
-#         if(a==Inf) return(1e5)
-#         return(a)
-#       }    
-#       pred = sum(x[j, ] * beta)
-#       Xj.norm = sum(Xj**2)
-#       fim <- function(el) {
-#         #  print(el)
-#         a = el * fj(pred) - fj(pred + gamma_i * Xj.norm * el * fj(pred))
-#         if(a < -1e100) return(-1e5)
-#         if(a > 1e100) return(1e5)
-#         return(a)
-#       }
-#       
-#       lam = optim(par=c(0), f = function(b) fim(b)**2, method = "L-BFGS")$par
       Xj.norm = sum(Xj**2)
       fj = exp(sum(beta * Xj))
       Aj = Hj * fj
@@ -118,15 +101,15 @@ cox.sgd <- function(data, niters=1e3, C=1, implicit=F, averaging=F) {
       if(Aj==0 || Bj==0 || dj==Aj) {
         lam <- 1
       } else if(dj==0) {
-        lam = uniroot(f = function(el) Bj * el - log(el), lower=1e-10, upper=1)$root
+        lam = uniroot(f = function(el) Bj * el - log(el), lower=0, upper=1)$root
       } else if(dj  > Aj) {
         rj = dj / Aj
-        lam = uniroot(f = function(el) Bj * el - log(rj - (rj-1) * el), 
-                      lower=1e-10, upper=rj / (rj-1) - 1e-10)$root
+        lam = uniroot(f = function(el) Bj * el - log(max(0, rj - (rj-1) * el)), 
+                      lower=1e-10, upper=rj / (rj-1))$root
       } else if (dj < Aj) {
         rj = dj / Aj
         lam = uniroot(f = function(el) Bj * el - log(rj + (1-rj) * el), 
-                      lower=1e-10, upper=1-1e-10)$root
+                      lower=1e-10, upper=1)$root
       }
     }
      
