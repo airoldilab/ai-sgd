@@ -48,10 +48,12 @@ fit.cox <- function(data, verbose=T) {
 
 cox.sgd <- function(data, niters=1e3, C=1, implicit=F, averaging=F) {
   par(mfrow=c(1, 1))
-  mse.best = 0 # dist(fit.cox(data), data$beta)
+  # Fit the parameter through other method, then use as "best".
+  mse.best = dist(fit.cox(data), data$beta)
   if(implicit) {
     print("Running Implicit SGD for Cox PH model.")
   }
+  # input
   n = length(data$y)
   p = ncol(data$x)
   beta = matrix(0, nrow=p, ncol=1)
@@ -68,7 +70,7 @@ cox.sgd <- function(data, niters=1e3, C=1, implicit=F, averaging=F) {
   d = data$censor[ord]  # censor
   x = matrix(data$x[ord, ], ncol=p)  # ordered covariates.
   
-  # plotting.
+  # plotting params.
   plot.points = as.integer(seq(1, niters, length.out=20))
   pb = txtProgressBar(style=3)
   
@@ -76,7 +78,7 @@ cox.sgd <- function(data, niters=1e3, C=1, implicit=F, averaging=F) {
   fj <- NA
   fim <- NA
   lam <- 1
-  # param for averaging
+  # parameter for averaging
   beta.bar <- matrix(0, nrow=p, ncol=1)
   
   units.sample = sample(1:n, size=niters, replace=T)
@@ -85,31 +87,51 @@ cox.sgd <- function(data, niters=1e3, C=1, implicit=F, averaging=F) {
     ksi = exp(x %*% beta)
     j = units.sample[i] # sample unit
     Xj = matrix(x[j, ], ncol=1) # get covariates
-    Hj = sum(head(d, j) / head(rev(cumsum(rev(ksi))), j))  # baseline hazards for units in risk set Rj.
+    
+    # baseline hazards for units in risk set Rj.
+    Hj = sum(head(d, j) / head(rev(cumsum(rev(ksi))), j))  
     
     # Defined for the implicit
     if(implicit) {
-      fj <- function(b) {
-        a = d[j] - Hj * exp(b)
-        if(a==-Inf) return(-1e5)
-        if(a==Inf) return(1e5)
-        return(a)
-      }    
-      pred = sum(x[j, ] * beta)
+#       fj <- function(b) {
+#         a = d[j] - Hj * exp(b)
+#         if(a==-Inf) return(-1e5)
+#         if(a==Inf) return(1e5)
+#         return(a)
+#       }    
+#       pred = sum(x[j, ] * beta)
+#       Xj.norm = sum(Xj**2)
+#       fim <- function(el) {
+#         #  print(el)
+#         a = el * fj(pred) - fj(pred + gamma_i * Xj.norm * el * fj(pred))
+#         if(a < -1e100) return(-1e5)
+#         if(a > 1e100) return(1e5)
+#         return(a)
+#       }
+#       
+#       lam = optim(par=c(0), f = function(b) fim(b)**2, method = "L-BFGS")$par
       Xj.norm = sum(Xj**2)
-      fim <- function(el) {
-        #  print(el)
-        a = el * fj(pred) - fj(pred + gamma_i * Xj.norm * el * fj(pred))
-        if(a < -1e100) return(-1e5)
-        if(a > 1e100) return(1e5)
-        return(a)
+      fj = exp(sum(beta * Xj))
+      Aj = Hj * fj
+      dj = d[j] # censor data.
+      Bj = gamma_i * Xj.norm * (dj - Aj)
+      if(Aj==0 || Bj==0 || dj==Aj) {
+        lam <- 1
+      } else if(dj==0) {
+        lam = uniroot(f = function(el) Bj * el - log(el), lower=1e-10, upper=1)$root
+      } else if(dj  > Aj) {
+        rj = dj / Aj
+        lam = uniroot(f = function(el) Bj * el - log(rj - (rj-1) * el), 
+                      lower=1e-10, upper=rj / (rj-1) - 1e-10)$root
+      } else if (dj < Aj) {
+        rj = dj / Aj
+        lam = uniroot(f = function(el) Bj * el - log(rj + (1-rj) * el), 
+                      lower=1e-10, upper=1-1e-10)$root
       }
-      
-      lam = optim(par=c(0), f = function(b) fim(b)**2, method = "L-BFGS")$par
     }
      
     # Update. (lam=1 for explicit -- updated for implicit)
-    beta = beta + gamma_i * (d[j] - Hj * ksi[j]) * Xj
+    beta = beta + gamma_i * lam * (d[j] - Hj * ksi[j]) * Xj
     
     if(averaging) {
       beta.bar = (1/i) * ((i-1) * beta.bar + beta)
