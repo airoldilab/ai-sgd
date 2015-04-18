@@ -1,6 +1,13 @@
-## Example: Cox PH model..
+## Model: Cox proportional hazards.
+#
+#  Example usage:
+#     d  = generate.data(1e3, 10)
+#     fit.cox(d)  # uses R package to find MLE.
+#     cox.sgd(d, niters=1e4, implicit=T, average=T)
 rm(list=ls())
 library(survival)
+library(glmnet)
+
 
 generate.data <- function(n, p) {
   X = matrix(rbinom(n * p, size=2, prob = 0.1), nrow=n, ncol=p)
@@ -15,24 +22,33 @@ generate.data <- function(n, p) {
   censor.prob = (1 + exp(-k * (Y-q3)))**(-1)
   # plot(censor.prob, main="Censoring probabilities", type="l")
   C = rbinom(n, size=1, prob= censor.prob)
-  return(list(x=X, y=Y, censor=C, beta=beta))
+  M = matrix(0, nrow=n, ncol=2)
+  colnames(M) <- c("time", "status")
+  M[, 1] <- Y
+  M[, 2] <- C
+  return(list(x=X, y=Y, censor=C, M=M, beta=beta))
 }
 
 dist <- function(x, y)  {
  sqrt(mean((x-y)**2))  
 }
 
-fit.cox <- function(data) {
+fit.cox <- function(data, verbose=T) {
   fit <- coxph(Surv(y, censor) ~ x, data)
-  print(names(fit))
-  print(summary(fit))
-  print("real parameters")
-  print(data$beta)
-  print("Distance")
-  print(dist(fit$coeff, data$beta))
+  if(verbose) {
+    print(names(fit))
+    print(summary(fit))
+    print("real parameters")
+    print(data$beta)
+    print("Distance")
+    print(dist(fit$coeff, data$beta))
+  }
+  return(as.numeric(coefficients(fit)))
 }
 
 cox.sgd <- function(data, niters=1e3, C=1, implicit=F, averaging=F) {
+  par(mfrow=c(1, 1))
+  mse.best = 0 # dist(fit.cox(data), data$beta)
   if(implicit) {
     print("Running Implicit SGD for Cox PH model.")
   }
@@ -41,7 +57,7 @@ cox.sgd <- function(data, niters=1e3, C=1, implicit=F, averaging=F) {
   beta = matrix(0, nrow=p, ncol=1)
   gammas = C / seq(1, niters)
   if(averaging) {
-    gammas = C / seq(1, niters)**(0.35)
+    gammas = C / seq(1, niters)**(1/3)
   }
   print(summary(gammas))
   betas = matrix(0, nrow=p, ncol=0)
@@ -102,84 +118,72 @@ cox.sgd <- function(data, niters=1e3, C=1, implicit=F, averaging=F) {
       mse <- c(mse, dist(beta, data$beta))
     }
     
-    if(i %in% plot.points)
+    if(i %in% plot.points) {
+     print(sprintf("Last MSE = %.3f", tail(mse, 1)))
       plot(mse, type="l", main=sprintf("dist=%.4f (implicit=%d)", tail(mse, 1), implicit), ylim=c(0, max(mse)))
-    
+     abline(h=mse.best, col="red", lty=3)
+    }
     setTxtProgressBar(pb, value=i/niters)
   }
   print("SGD params")
-  print(beta)
-  print("Distance")
+  print(as.numeric(beta))
+  print("Distance of last sgd iterate")
   print(dist(beta, data$beta))
-}
-
-
-cox.implicit <- function(niters=1e4) {
-  beta = 0
-  betas.im = c(0)
-  # candidates <- seq(-100, 100, length.out=100)
-  lams = c()
-  for(i in 1:niters) {
-    ksi = exp(X * beta)
-    gamma_i = gammas[i]
-    j = sample(1:n, size=1)
-    Hj = sum(head(d, j) / head(rev(cumsum(rev(ksi))), j))
-    fj <- function(b) {
-      a = d[j] - Hj * exp(b)
-      if(a==-Inf) return(-1e5)
-      if(a==Inf) return(1e5)
-      return(a)
-    }
-    
-   
-    pred = X[j] * beta
-    fim <- function(el) {
-    #  print(el)
-      a = el * fj(pred) - fj(pred + gamma_i * X[j]**2 * el * fj(pred))
-      if(a < -1e100) return(-1e5)
-      if(a > 1e100) return(1e5)
-      # print("return")
-      # print(a)
-      return(a)
-    }
-#     lam0 = 0
-#     lam1 = 0
-#     fim0 = fim(lam0)
-#     if(!is.na(fim0) && is.finite(fim0) && fim0 != 0 ) {
-#       finished = F
-#       while(!finished) {
-#         lam1 = runif(1, min=-100, max=100)
-#         fim1 = fim(lam1)
-#        # print(sprintf("fim0=%.2f, lam1=%.2f fim1=%.2f", fim0, lam1, fim1))
-#        if(is.infinite(fim1) || is.na(fim1)) 
-#          finished <- F
-#        else
-#         finished <- (fim1 > 0 && fim0 < 0) || (fim1 < 0 && fim0 > 0)
-#       }
-#     }
-#     
-#     Bn = c(lam0, lam1)
-#     print(Bn)
-#     gamma_i = gammas[i]
-#     lambda = NA
-#     if(Bn[1]==Bn[2]) {
-#       lambda = Bn[1] 
-#     } else {
-#       lambda = uniroot(f=fim, lower = Bn[1], upper=Bn[2], tol=1e-5)$root
-#     #}
-    lambda = optim(par=c(0), f = function(b) fim(b)**2, 
-                   method = "L-BFGS")$par
-    lams <- c(lams, fim(lambda))
-    beta = beta + gamma_i * lambda * fj(pred) * X[j]
-    betas.im = c(betas.im, beta)
-  }
   par(mfrow=c(1, 2))
-  plot(tail(betas.im, niters/2), type="l")
-  print(sprintf("Last SGD = %.3f Last implicit = %.3f", tail(betas, 1), tail(betas.im, 1)))
-  hist(lams, breaks=30)
-print(summary(lams))
+  plot(mse, type="l", main=sprintf("dist=%.4f (implicit=%d)", tail(mse, 1), implicit), ylim=c(0, max(mse)))
+  abline(h=mse.best, col="red", lty=3)
+  plot( data$beta, as.numeric(beta), pch="x")
+  lines(data$beta, data$beta, lty=3)
 }
-# test <- data.frame(start=runif(100000,1,100), stop=runif(100000,101,300), censor=round(runif(100000,0,1)), testfactor=round(runif(100000,1,11)))
-# 
-# test$testfactorf <- as.factor(test$testfactor)
-# summ <- coxph(Surv(start,stop,censor) ~ relevel(testfactorf, 2), test)
+
+example.usage <- function() {
+  print("Running example for Cox proportional hazards model.")
+  # case 1: problematic.
+#   d = generate.data(1e4, 50)
+#   cox.sgd(d, niters = 1e4, C = 1, implicit = T, averaging=T)
+  d = generate.data(1e4, 20)
+   cox.sgd(d, niters = 5e4, C = 2, implicit = T, averaging=T)
+}
+
+glmnet.example <- function() {
+  #Cox
+  set.seed(10101)
+  
+  N=10000; p=100
+  nzc=p
+  x=matrix(rnorm(N*p),N,p)
+  beta=rnorm(nzc)
+  fx=x[,seq(nzc)]%*%beta
+  hx=exp(fx)
+  ty=rexp(N,hx)
+  tcens=rbinom(n=N,prob=.3,size=1)# censoring indicator
+  y=cbind(time=ty,status=1-tcens) # y=Surv(ty,1-tcens) with library(survival)
+
+  fit=glmnet(x,y,family="cox", nlambda = 5)
+  
+  plot(fit)
+  mse = as.numeric(apply(fit$beta, 2, function(col) dist(col, beta)))
+  # print(length(mse))
+  # print(names(fit))
+  # print(dim(fit$beta))
+  beta.glmnet = as.numeric(fit$beta[, which.min(mse)])
+  # print("True beta")
+  # print(beta)
+  # print(beta.glmnet)
+  print(sprintf("Min MSE for coxnet = %.3f", min(mse)))
+  print(length(y[,1]))
+  print(dim(x))
+
+  d = list(x=x, M=y, y=as.numeric(y[,1]), 
+           censor=as.numeric(y[,2]), 
+           beta=beta)
+  rm(y)
+ # d = generate.data(N,p)
+ # fit.cox(d)
+  # coxph(Surv(y, censor) ~ x, data=d) 
+ print("MSE of coxnet")
+ print(summary(mse))
+  cox.sgd(d, niters=1e5, C = .06, implicit = F, averaging=T)
+   print("MSE of coxnet")
+ print(summary(mse))
+}
