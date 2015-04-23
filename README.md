@@ -3,6 +3,9 @@
 This is the accompanying code implementation of the methods and algorithms
 for a paper in progress.
 
+## Maintainer
+* Dustin Tran \<dtran@g.harvard.edu\>
+
 ## References
 * Francis Bach and Eric Moulines. Non-strongly-convex smooth stochastic
   approximation with convergence rate O(1/n). *Advances in Neural Information
