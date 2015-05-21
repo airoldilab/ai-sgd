@@ -1,4 +1,4 @@
-# Averaged implicit stochastic gradient descent (AI-SGD)
+# Stability and optimality in stochastic gradient descent
 
 This is the accompanying code implementation of the methods and algorithms
 for a paper in progress.
